@@ -1,0 +1,44 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Pytest / Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Models & Artifacts
+models/*
+!models/.gitkeep
+mlruns/
+.mlflow/
+
+# Data
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# Experiment Tracking & Feature Store Local DBs
+mlruns.db
+features/data/*.db
+features/data/*.parquet
+features/data/*.pb
+!features/data/.gitkeep
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
