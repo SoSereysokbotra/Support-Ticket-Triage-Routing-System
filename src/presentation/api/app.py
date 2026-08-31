@@ -67,18 +67,38 @@ def create_app(model_override=None, registry_override=None, logger_override=None
                 classifier = BaselineTfidfClassifier(model_version="tfidf-baseline-v0")
                 classifier.fit(df["text"].tolist(), df["category"].tolist())
 
+        # 4. Initialize Urgency Model
+        urgency_classifier = None
+        try:
+            urg_version = registry.get_version_by_alias(model_name="ticket-urgency-classifier", alias="production")
+            if urg_version:
+                print(f"[Lifespan] Loading production urgency model v{urg_version.version} from MLflow...")
+                urgency_classifier = registry.load_model_by_version_or_alias(model_name="ticket-urgency-classifier", alias="production")
+        except Exception:
+            pass
+
+        if not urgency_classifier:
+            print("[Lifespan] Initializing baseline urgency classifier...")
+            loader = DatasetLoader()
+            df = loader.load_or_create_dataset()
+            from src.infrastructure.models.urgency_classifier import BaselineUrgencyClassifier
+            urgency_classifier = BaselineUrgencyClassifier(model_version="tfidf-urgency-v0")
+            urgency_classifier.fit(df["text"].tolist(), df["urgency"].tolist())
+
         # Initialize Feast Feature Store
         feature_store = FeastFeatureStoreAdapter(repo_path=project_root / "features")
         app.state.feature_store = feature_store
 
         app.state.classifier = classifier
+        app.state.urgency_classifier = urgency_classifier
         app.state.route_use_case = RouteTicketUseCase()
         app.state.predict_use_case = PredictTicketUseCase(
             classifier=classifier,
+            urgency_classifier=urgency_classifier,
             router=app.state.route_use_case,
             feature_store=feature_store,
         )
-        print(f"[Lifespan] System initialized with model: {classifier.model_version}")
+        print(f"[Lifespan] System initialized with category model: {classifier.model_version}, urgency model: {urgency_classifier.model_version}")
 
         yield
 

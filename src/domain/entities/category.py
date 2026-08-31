@@ -29,6 +29,10 @@ class TicketUrgency(str, Enum):
     CRITICAL = "Critical"
 
     @classmethod
+    def list_urgencies(cls) -> list[str]:
+        return [u.value for u in cls]
+
+    @classmethod
     def from_str(cls, value: str) -> "TicketUrgency":
         normalized = value.strip().lower()
         for urg in cls:

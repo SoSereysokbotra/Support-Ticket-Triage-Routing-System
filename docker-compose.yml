@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # 1. FastAPI Real-Time Inference & Routing Service
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ticket-triage-api
+    ports:
+      - "8000:8000"
+    environment:
+      - MLFLOW_TRACKING_URI=sqlite:///mlruns.db
+      - FEAST_USAGE=False
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./mlruns.db:/app/mlruns.db
+      - ./mlruns:/app/mlruns
+    restart: unless-stopped
+
+  # 2. Streamlit MLOps Monitoring Dashboard
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ticket-triage-dashboard
+    command: ["streamlit", "run", "src/presentation/dashboard/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    ports:
+      - "8501:8501"
+    environment:
+      - MLFLOW_TRACKING_URI=sqlite:///mlruns.db
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./mlruns.db:/app/mlruns.db
+      - ./mlruns:/app/mlruns
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # 3. MLflow Tracking & Model Registry Server
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ticket-triage-mlflow
+    command: ["mlflow", "server", "--backend-store-uri", "sqlite:///mlruns.db", "--default-artifact-root", "./mlruns", "--host", "0.0.0.0", "--port", "5000"]
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns.db:/app/mlruns.db
+      - ./mlruns:/app/mlruns
+    restart: unless-stopped
