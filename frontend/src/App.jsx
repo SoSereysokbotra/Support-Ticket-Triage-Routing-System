@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AppLayout } from './components/layout/AppLayout';
 import { TriagePortal } from './views/TriagePortal';
+import { AgentQueue } from './views/AgentQueue';
 import { GlassPanel } from './components/common/GlassPanel';
 import { Badge } from './components/common/Badge';
 import { Sparkles, ArrowRight, Activity, Cpu, ShieldCheck } from 'lucide-react';
@@ -19,18 +20,20 @@ function App() {
         <TriagePortal onTicketSubmitted={handleTicketSubmitted} />
       )}
 
-      {activeTab !== 'triage' && (
+      {activeTab === 'queue' && (
+        <AgentQueue sessionTickets={ticketHistory} />
+      )}
+
+      {activeTab === 'mlops' && (
         <GlassPanel className="p-8 text-center space-y-3 border-dashed border-slate-800">
-          <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 mx-auto flex items-center justify-center text-cyan-400">
-            {activeTab === 'queue' ? <Activity className="w-6 h-6" /> : <Cpu className="w-6 h-6" />}
+          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 mx-auto flex items-center justify-center text-rose-400">
+            <Cpu className="w-6 h-6" />
           </div>
           <h3 className="text-lg font-bold text-white capitalize">
-            {activeTab === 'queue' ? 'Agent Dispatch Queue' : 'MLOps Command Center'}
+            MLOps Command Center
           </h3>
           <p className="text-xs text-slate-400 max-w-md mx-auto">
-            {activeTab === 'queue' 
-              ? 'Ready for Phase F3: Filter and inspect routed tickets, view VIP priority queues, and inspect model telemetry.' 
-              : 'Ready for Phase F4: Real-time Evidently AI drift analysis, MLflow zero-downtime rollbacks, and closed-loop retraining.'}
+            Ready for Phase F4: Real-time Evidently AI drift analysis, MLflow zero-downtime rollbacks, and closed-loop retraining.
           </p>
         </GlassPanel>
       )}
