@@ -179,7 +179,12 @@ class DatasetLoader:
         df.to_csv(raw_csv, index=False)
         return df
 
-    def load_or_create_dataset(self, csv_filename: Optional[str] = None) -> pd.DataFrame:
+    def load_or_create_dataset(
+        self,
+        csv_filename: Optional[str] = None,
+        num_samples: Optional[int] = None,
+        random_state: int = 42,
+    ) -> pd.DataFrame:
         """
         Loads an existing dataset from raw directory, or generates a bootstrap dataset.
         """
@@ -188,13 +193,16 @@ class DatasetLoader:
             if path.exists():
                 return pd.read_csv(path)
 
+        if num_samples is not None:
+            return self.generate_bootstrap_dataset(num_samples=num_samples, random_state=random_state)
+
         # Check if any CSV exists in raw_dir
         existing_csvs = list(self.raw_dir.glob("*.csv"))
         if existing_csvs:
             return pd.read_csv(existing_csvs[0])
 
         # Generate bootstrap
-        return self.generate_bootstrap_dataset()
+        return self.generate_bootstrap_dataset(random_state=random_state)
 
     def get_stratified_splits(
         self,
@@ -237,3 +245,18 @@ class DatasetLoader:
         test_df.to_csv(self.processed_dir / "test.csv", index=False)
 
         return train_df, val_df, test_df
+
+    def stratified_split(
+        self,
+        df: Optional[pd.DataFrame] = None,
+        test_size: float = 0.15,
+        val_size: float = 0.15,
+        random_state: int = 42,
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        """Alias for get_stratified_splits."""
+        return self.get_stratified_splits(
+            df=df,
+            test_size=test_size,
+            val_size=val_size,
+            random_state=random_state,
+        )

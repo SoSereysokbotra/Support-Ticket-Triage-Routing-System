@@ -64,10 +64,14 @@ def compute_metrics(eval_pred):
 def train_model(
     model_name: str = "distilbert-base-uncased",
     output_dir: Path | None = None,
+    train_df: pd.DataFrame | None = None,
+    val_df: pd.DataFrame | None = None,
+    test_df: pd.DataFrame | None = None,
     num_epochs: int = 4,
     batch_size: int = 16,
     learning_rate: float = 3e-5,
     max_length: int = 128,
+    random_state: int = 42,
 ) -> Dict[str, float]:
     project_root = Path(__file__).resolve().parents[3]
     output_dir = output_dir or (project_root / "models" / "distilbert_v0")
@@ -77,9 +81,14 @@ def train_model(
     print("PHASE 0: Fine-Tuning DistilBERT Baseline Ticket Classifier")
     print("=" * 60)
 
-    # 1. Load Data
-    loader = DatasetLoader()
-    train_df, val_df, test_df = loader.get_stratified_splits()
+    # 1. Load Data if not provided
+    if train_df is None or val_df is None or test_df is None:
+        loader = DatasetLoader()
+        train_df, val_df, test_df = loader.get_stratified_splits(random_state=random_state)
+    else:
+        train_df = train_df.copy()
+        val_df = val_df.copy()
+        test_df = test_df.copy()
     print(f"Dataset split sizes: Train={len(train_df)}, Val={len(val_df)}, Test={len(test_df)}")
 
     # 2. Build Label Mappings
