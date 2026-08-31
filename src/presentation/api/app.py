@@ -12,13 +12,15 @@ from src.infrastructure.data.dataset_loader import DatasetLoader
 from src.infrastructure.features.feast_store import FeastFeatureStoreAdapter
 from src.infrastructure.models.baseline_classifier import BaselineTfidfClassifier
 from src.infrastructure.models.distilbert_classifier import DistilBertTicketClassifier
+from src.infrastructure.monitoring.prediction_logger import PredictionLogger
 from src.infrastructure.registry.mlflow_registry import MLflowModelRegistry
 from src.presentation.api.routes.health import router as health_router
+from src.presentation.api.routes.monitoring import router as monitoring_router
 from src.presentation.api.routes.predict import router as predict_router
 from src.presentation.api.routes.registry import router as registry_router
 
 
-def create_app(model_override=None, registry_override=None) -> FastAPI:
+def create_app(model_override=None, registry_override=None, logger_override=None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.start_time = time.time()
@@ -26,6 +28,13 @@ def create_app(model_override=None, registry_override=None) -> FastAPI:
 
         registry = registry_override or MLflowModelRegistry(project_root=project_root)
         app.state.registry = registry
+
+        # Initialize Prediction Logger
+        if logger_override:
+            app.state.prediction_logger = logger_override
+        elif not getattr(app.state, "prediction_logger", None):
+            prediction_logger = PredictionLogger(db_path=project_root / "data" / "monitoring" / "inference_logs.db")
+            app.state.prediction_logger = prediction_logger
 
         if model_override:
             classifier = model_override
@@ -77,8 +86,8 @@ def create_app(model_override=None, registry_override=None) -> FastAPI:
 
     app = FastAPI(
         title="Support Ticket Triage & Routing System",
-        description="Production MLOps Service with MLflow Model Registry Lifecycle & Zero-Downtime Rollback",
-        version="0.2.0",
+        description="Production MLOps Service with Drift Monitoring & Automated Quality Gating",
+        version="0.3.0",
         lifespan=lifespan,
     )
 
@@ -93,6 +102,7 @@ def create_app(model_override=None, registry_override=None) -> FastAPI:
     app.include_router(health_router)
     app.include_router(predict_router)
     app.include_router(registry_router)
+    app.include_router(monitoring_router)
 
     return app
 

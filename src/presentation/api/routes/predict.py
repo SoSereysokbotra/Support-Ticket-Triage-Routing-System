@@ -31,6 +31,25 @@ async def predict_ticket(
         )
         response_dto = use_case.execute(dto)
 
+        # Asynchronously log prediction telemetry for drift & KPI monitoring
+        logger = getattr(request.app.state, "prediction_logger", None)
+        if logger:
+            try:
+                logger.log_prediction(
+                    ticket_id=response_dto.ticket_id,
+                    text=payload.text,
+                    predicted_category=response_dto.predicted_category,
+                    confidence=response_dto.confidence,
+                    latency_ms=response_dto.latency_ms,
+                    probabilities=response_dto.probabilities,
+                    customer_id=payload.customer_id,
+                    customer_tier=response_dto.customer_features.get("customer_tier") if response_dto.customer_features else None,
+                    is_vip=response_dto.customer_features.get("is_vip") if response_dto.customer_features else None,
+                    model_version=response_dto.model_version,
+                )
+            except Exception:
+                pass  # Non-blocking telemetry
+
         return TicketPredictResponse(
             ticket_id=response_dto.ticket_id,
             predicted_category=response_dto.predicted_category,
@@ -62,6 +81,7 @@ async def predict_ticket_batch(
 
     start_time = time.perf_counter()
     results = []
+    log_records = []
 
     for item in payload.tickets:
         dto = TicketInputDTO(
@@ -87,8 +107,28 @@ async def predict_ticket_batch(
                 customer_features=response_dto.customer_features,
             )
         )
+        log_records.append({
+            "ticket_id": response_dto.ticket_id,
+            "text": item.text,
+            "predicted_category": response_dto.predicted_category,
+            "confidence": response_dto.confidence,
+            "probabilities": response_dto.probabilities,
+            "latency_ms": response_dto.latency_ms,
+            "customer_id": item.customer_id,
+            "customer_tier": response_dto.customer_features.get("customer_tier") if response_dto.customer_features else None,
+            "is_vip": response_dto.customer_features.get("is_vip") if response_dto.customer_features else None,
+            "model_version": response_dto.model_version,
+        })
 
     total_latency_ms = (time.perf_counter() - start_time) * 1000.0
+
+    # Batch telemetry logging
+    logger = getattr(request.app.state, "prediction_logger", None)
+    if logger and log_records:
+        try:
+            logger.log_batch(log_records)
+        except Exception:
+            pass
 
     return TicketPredictBatchResponse(
         results=results,

@@ -35,6 +35,13 @@ features/data/*.parquet
 features/data/*.pb
 !features/data/.gitkeep
 
+# Monitoring Telemetry & Reports
+data/monitoring/*.db*
+data/monitoring/reports/*
+data/monitoring/*.csv
+!data/monitoring/.gitkeep
+
+
 # IDE & OS
 .vscode/
 .idea/
