@@ -1,0 +1,42 @@
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python cache & build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Git & IDEs
+.git/
+.gitignore
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# MLflow & Prefect local runs and databases
+mlruns/
+mlflow.db
+.prefect/
+
+# Feast local online db / data artifacts if generated dynamically
+features/data/
+*.parquet
+*.db
+*.sqlite
+
+# Large temporary datasets & logs
+data/raw/
+data/processed/
+data/monitoring/reports/*.html
+logs/
+*.log

@@ -6,8 +6,14 @@ feature/target drift reports (Evidently AI), and closed-loop retraining triggers
 
 from __future__ import annotations
 
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+# Ensure project root is on sys.path for Streamlit runner
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 import pandas as pd
 import streamlit as st
