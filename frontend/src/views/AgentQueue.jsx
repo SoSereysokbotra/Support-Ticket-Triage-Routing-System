@@ -4,7 +4,10 @@ import { QueueFilterBar } from '../components/queue/QueueFilterBar';
 import { TicketQueueTable } from '../components/queue/TicketQueueTable';
 import { TicketDetailDrawer } from '../components/queue/TicketDetailDrawer';
 import { getPredictionLogs } from '../services/api';
-import { RefreshCw, CheckCircle2 } from 'lucide-react';
+import { PageHeader } from '../components/common/PageHeader';
+import { Button } from '../components/common/Button';
+import { Alert } from '../components/common/Alert';
+import { RefreshCw } from 'lucide-react';
 
 const INITIAL_FALLBACK_TICKETS = [
   {
@@ -164,37 +167,20 @@ export const AgentQueue = ({ sessionTickets = [] }) => {
   });
 
   return (
-    <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            Support Agent Triage Queue
-          </h2>
-          <p className="text-xs text-slate-400">
-            Real-time routed ticket dispatch queue populated by live inference telemetry and Feast SLA rules
-          </p>
-        </div>
+    <>
+      <PageHeader
+        title="Queue"
+        description="Routed tickets from live inference, with SLA targets and team assignments."
+        actions={
+          <Button variant="secondary" icon={RefreshCw} onClick={fetchLogs} isLoading={isLoading}>
+            Refresh
+          </Button>
+        }
+      />
 
-        <button
-          onClick={fetchLogs}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 transition-all self-start"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-cyan-400' : ''}`} />
-          <span>Refresh Live Queue</span>
-        </button>
-      </div>
-
-      {/* KPI Stats Cards */}
       <QueueStatsHeader tickets={tickets} />
 
-      {/* Toast Alert */}
-      {toastMsg && (
-        <div className="p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          <span>{toastMsg}</span>
-        </div>
-      )}
+      {toastMsg && <Alert variant="success">{toastMsg}</Alert>}
 
       {/* Search & Filter Bar */}
       <QueueFilterBar
@@ -224,6 +210,6 @@ export const AgentQueue = ({ sessionTickets = [] }) => {
         onClose={() => setSelectedTicket(null)}
         onResolve={handleResolve}
       />
-    </div>
+    </>
   );
 };
