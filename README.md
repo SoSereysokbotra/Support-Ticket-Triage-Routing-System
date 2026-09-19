@@ -103,11 +103,11 @@ Built following **Hexagonal Architecture (Ports & Adapters)** and **Domain-Drive
 
 | Pattern | Problem Solved | Implementation | Guarantee |
 |---|---|---|---|
-| **1. Hexagonal Architecture** | Tight coupling between ML code, serving, and storage | Domain ports (`ITicketClassifier`, `IUrgencyClassifier`) + concrete adapters | Zero domain changes when swapping ML backends |
-| **2. Feast Feature Store** | **Training-Serving Skew** caused by disparate SQL vs API feature code | Shared `customer_profile_features` definitions; offline Parquet + online SQLite | **0.0000% feature skew** verified by automated unit tests |
-| **3. MLflow Model Registry** | Fragile file-path deployments & messy rollback procedures | Centralized tracking backend + modern alias pointers (`@production`, `@staging`) | 1-millisecond atomic rollback without rebuilding code |
-| **4. Prefect 3 Retraining DAG** | Ad-hoc retraining scripts silently deploying degraded models | Prefect pipeline with pre-flight data validation & **Quality Gate (Macro-F1 Floor 0.75)** | Automatic blocking & tagging of regressed candidate models |
-| **5. Evidently AI Drift Engine** | Silent production performance degradation | SQLite WAL telemetry + KS-test / PSI / Wasserstein drift scoring | **Closed-loop trigger** automatically retrains upon detected drift |
+| **1. Hexagonal Architecture** | Tight coupling between ML code, serving, and storage | Domain ports (`ITicketClassifier`, `IUrgencyClassifier`, `IFeatureStore`) + concrete adapters | Zero domain changes when swapping ML or storage backends |
+| **2. Feast Feature Store** | Disparate customer metadata between batch pipelines and live triage | Shared `customer_profile_features` definitions; offline Parquet + online SQLite | Consistent customer profile enrichment & deterministic SLA routing |
+| **3. MLflow Model Registry** | Fragile file-path deployments & messy rollback procedures | Centralized tracking backend + modern alias pointers (`@production`, `@staging`) | Atomic, sub-millisecond rollback without modifying application code |
+| **4. Prefect 3 Retraining DAG** | Ad-hoc retraining scripts silently deploying degraded models | Prefect pipeline with data validation & **Side-by-Side Quality Gate** | Honest evaluation against production baseline on identical holdout splits |
+| **5. Evidently AI Drift Engine** | Silent production performance degradation & model collapse | SQLite WAL telemetry + KS-test / PSI drift scoring with human-in-the-loop review queue staging | Alerting and dataset curation staging (`drift_review_queue.csv`) without unverified feedback loops |
 
 ---
 
@@ -118,12 +118,12 @@ Built following **Hexagonal Architecture (Ports & Adapters)** and **Domain-Drive
 | **Phase 0** | Baseline DistilBERT Macro-F1 / Accuracy | **0.9787 / 98.8%** |
 | **Phase 0** | End-to-End API Latency (p50 / p95) | **14.2 ms / 28.5 ms** |
 | **Phase 1** | Model Registry Rollback Time | **< 2 milliseconds** (Metadata alias update) |
-| **Phase 2** | Training-Serving Feature Skew | **0.0000% Skew** (`test_skew_prevention.py`) |
+| **Phase 2** | Feature Store Profile Consistency | **100% Consistent** (`test_skew_prevention.py`) |
 | **Phase 3** | Automated Retraining Pipeline Execution Time | **~45 seconds** (Ingest ➔ Validate ➔ Train ➔ Gate) |
-| **Phase 3** | Regressed Models Blocked by Quality Gate | **100% Blocked** (Candidate $0.8827$ rejected vs Prod $0.9787$) |
+| **Phase 3** | Regressed Models Blocked by Quality Gate | **100% Blocked** (Side-by-side holdout split evaluation) |
 | **Phase 4** | Drift Score (Baseline vs Injected Drift) | **0.0% vs 100.0% Shift** |
-| **Phase 4** | Time from Drift Alert ➔ Retrained Candidate | **~50 seconds** (Full Closed Loop) |
-| **Phase 5** | Test Suite Coverage | **43 / 43 tests passing (100%)** |
+| **Phase 4** | Drift Detection & Curation Staging | Staged to `drift_review_queue.csv` for human annotation |
+| **Phase 5** | Test Suite Coverage | **43+ tests passing (100%)** |
 
 ---
 

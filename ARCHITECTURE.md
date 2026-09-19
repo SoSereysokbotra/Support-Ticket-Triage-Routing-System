@@ -59,20 +59,20 @@ The system processes high-volume, unstructured customer support tickets, dynamic
 ### Pattern 1: Hexagonal Architecture (Ports & Adapters)
 - **Problem Solved**: High coupling between ML frameworks (PyTorch, Transformers, Scikit-Learn), serving frameworks (FastAPI, BentoML), and storage backends.
 - **Implementation**:
-  - `src/domain/`: Pure domain entities (`Ticket`, `Category`, `Urgency`) with zero framework dependencies.
-  - `src/domain/interfaces/`: Abstract ports (`ITicketClassifier`, `IUrgencyClassifier`).
-  - `src/infrastructure/`: Concrete adapters (`DistilBertTicketClassifier`, `MLflowModelRegistry`, `FeastFeatureStoreAdapter`).
-- **Failure Prevented**: Swapping HuggingFace DistilBERT for BentoML or ONNX Runtime requires zero modifications to domain routing rules or business invariants.
+  - `src/domain/`: Pure domain entities (`Ticket`, `Category`, `Urgency`, `RoutingDecision`) with zero framework dependencies.
+  - `src/domain/interfaces/`: Abstract ports (`ITicketClassifier`, `IUrgencyClassifier`, `IFeatureStore`).
+  - `src/infrastructure/`: Concrete adapters (`DistilBertTicketClassifier`, `BaselineTfidfClassifier`, `MLflowModelRegistry`, `FeastFeatureStoreAdapter`).
+- **Failure Prevented**: Swapping HuggingFace DistilBERT for BentoML or ONNX Runtime, or replacing Feast with Redis/DynamoDB, requires zero modifications to domain use cases or business routing invariants.
 
 ---
 
-### Pattern 2: Single Source of Truth Feature Store (Feast)
-- **Problem Solved**: **Training-Serving Skew** — the silent killer of production ML systems where features are engineered differently at training time (SQL/Parquet) versus serving time (Python request handlers).
+### Pattern 2: Customer Profile Feature Store (Feast)
+- **Problem Solved**: **Disparate Customer Metadata & Attribute Skew** between batch pipeline analysis and real-time online routing decisions.
 - **Implementation**:
-  - `features/feature_definitions.py`: Shared definitions for `customer_profile_features` (`customer_tier`, `past_ticket_count`, `avg_resolution_time_hours`, `is_vip`).
-  - Offline store: Historical Parquet dataset used during Prefect retraining.
-  - Online store: Sub-millisecond SQLite/Redis key-value lookup at serving time.
-- **Failure Prevented**: `tests/unit/test_skew_prevention.py` mathematically asserts $0.0000\%$ skew between training and serving paths.
+  - `features/feature_definitions.py`: Shared entity and feature view definitions for `customer_profile_features` (`customer_tier`, `past_ticket_count`, `avg_resolution_time_hours`, `is_vip`).
+  - Offline store: Historical Parquet dataset used for cohort analysis and batch simulations.
+  - Online store: Sub-millisecond SQLite key-value lookup at serving time.
+- **Architectural Scope**: Feast provides customer context to composite business routing rules (`RouteTicketUseCase`) to calculate deterministic SLAs and priority upgrades. NLP classification (DistilBERT) operates on raw unstructured ticket text tokens.
 
 ---
 
@@ -86,23 +86,23 @@ The system processes high-volume, unstructured customer support tickets, dynamic
 
 ---
 
-### Pattern 4: Prefect DAG Orchestration & Quality Gate Discipline
-- **Problem Solved**: Ad-hoc retraining scripts that silently deploy degraded models to production when data drifts or edge cases occur.
+### Pattern 4: Prefect DAG Orchestration & Side-by-Side Quality Gate
+- **Problem Solved**: Ad-hoc retraining scripts that silently deploy degraded models or compare candidate metrics across different evaluation splits.
 - **Implementation**:
   - Modular Prefect 3 DAG: `ingest → validate → compute_features → train → evaluate → gate → register`.
   - **Data Validation Guard**: Strict pre-flight checks halting the pipeline if null texts, corrupted schemas, or catastrophic class imbalances are detected.
-  - **Quality Gate Task**: Compares candidate model Macro-F1 against active production baseline on held-out test splits. Automatically rejects models that fail the absolute floor ($0.75$) or regress beyond the allowed tolerance margin ($0.02$).
-- **Failure Prevented**: A candidate model scoring $0.8827$ against active production baseline $0.9787$ is blocked from production and tagged as `candidate_rejected`.
+  - **Side-by-Side Quality Gate**: Evaluates the candidate model and the active production model side-by-side on the *exact same held-out test split*. Automatically rejects models that fail the absolute floor ($0.75$) or regress beyond the allowed tolerance margin ($0.02$).
+- **Failure Prevented**: Guarantees true apples-to-apples performance comparisons and blocks regressed candidate models from obtaining the `production` alias.
 
 ---
 
-### Pattern 5: Evidently AI Drift Detection & Closed-Loop Retraining
-- **Problem Solved**: Unmonitored production performance degradation (concept drift & covariate shift) over time.
+### Pattern 5: Evidently AI Drift Monitoring & Dataset Curation Staging
+- **Problem Solved**: Unmonitored production performance degradation and the danger of model collapse from auto-retraining on unverified pseudo-labels.
 - **Implementation**:
   - `PredictionLogger`: Asynchronous, high-throughput SQLite WAL telemetry recording payload text, word count, predicted class, confidence, latency, and customer metadata.
-  - `DriftDetector`: Runs two-sample Kolmogorov-Smirnov (KS) tests and Wasserstein distance for numerical features (text length, word count, confidence), and Chi-Square / Population Stability Index (PSI) for target category shifts.
+  - `DriftDetector`: Two-sample Kolmogorov-Smirnov (KS) tests and Wasserstein distance for numerical distributions (text length, word count, confidence), and Chi-Square / Population Stability Index (PSI) for category distributions.
   - Generates interactive Evidently AI HTML reports and JSON audit trails in `data/monitoring/reports/`.
-  - `drift_monitoring_job`: Dispatches the Prefect retraining pipeline when cumulative drift exceeds $35\%$.
+  - `drift_monitoring_job`: When drift exceeds threshold ($30\%$), drifted samples are automatically exported to `data/monitoring/drift_review_queue.csv` for human-in-the-loop review / active learning annotation before retraining, preventing confirmation bias loops.
 
 ---
 

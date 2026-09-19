@@ -45,6 +45,8 @@ data/monitoring/*.csv
 # IDE & OS
 .vscode/
 .idea/
+.agents/
+.claude/
 *.swp
 *.swo
 .DS_Store
