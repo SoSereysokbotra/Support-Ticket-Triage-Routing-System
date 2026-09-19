@@ -45,3 +45,19 @@ class MockTicketClassifier(ITicketClassifier):
 @pytest.fixture
 def mock_classifier() -> MockTicketClassifier:
     return MockTicketClassifier()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def ensure_test_fixtures():
+    """Ensure Feast feature store is bootstrapped on clean checkouts."""
+    from pathlib import Path
+
+    project_root = Path(__file__).resolve().parents[1]
+    parquet_path = project_root / "features" / "data" / "customer_features.parquet"
+    db_path = project_root / "features" / "data" / "online_store.db"
+
+    if not parquet_path.exists() or not db_path.exists():
+        from src.infrastructure.features.feature_generator import bootstrap_feast_store
+
+        bootstrap_feast_store()
+

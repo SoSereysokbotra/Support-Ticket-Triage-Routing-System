@@ -77,7 +77,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Bootstrap Feast Feature Store
+        run: |
+          python src/infrastructure/features/feature_generator.py
+
       - name: Run Pytest Suite
+        env:
+          PYTHONPATH: .
         run: |
           pytest tests/ -v
 
