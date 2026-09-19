@@ -13,7 +13,7 @@ export const apiClient = axios.create({
 // API Helper Endpoints
 export const checkHealth = async () => {
   try {
-    const res = await apiClient.get('/api/v1/health');
+    const res = await apiClient.get('/health');
     return { ok: true, data: res.data };
   } catch (err) {
     return { ok: false, error: err.message };
