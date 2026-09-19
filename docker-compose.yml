@@ -81,3 +81,25 @@ services:
     depends_on:
       - api
     restart: unless-stopped
+
+  # 4. React Frontend (Vite build served by nginx)
+  #    The browser calls the API at http://localhost:8000 directly, so this
+  #    container only serves static files. For hot-reload during development
+  #    run `npm run dev` in ./frontend instead.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8000
+    image: ticket-triage-frontend:latest
+    container_name: ticket-triage-frontend
+    ports:
+      - "5173:80"
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+    depends_on:
+      - api
+    restart: unless-stopped
