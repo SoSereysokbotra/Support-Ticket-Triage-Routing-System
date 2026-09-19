@@ -29,11 +29,18 @@ class MLflowModelRegistry:
         project_root: Optional[Path] = None,
     ) -> None:
         self.project_root = project_root or Path(__file__).resolve().parents[3]
-        db_path = self.project_root / "mlruns.db"
+        env_uri = os.environ.get("MLFLOW_TRACKING_URI")
+
+        db_path = self.project_root / "data" / "mlruns.db"
+        if not db_path.exists() and (self.project_root / "mlruns.db").exists():
+            db_path = self.project_root / "mlruns.db"
+        elif not db_path.exists():
+            db_path.parent.mkdir(parents=True, exist_ok=True)
+
         artifacts_dir = self.project_root / "mlruns"
         artifacts_dir.mkdir(parents=True, exist_ok=True)
 
-        self.tracking_uri = tracking_uri or f"sqlite:///{db_path.as_posix()}"
+        self.tracking_uri = tracking_uri or env_uri or f"sqlite:///{db_path.as_posix()}"
         self.registry_uri = registry_uri or self.tracking_uri
 
         mlflow.set_tracking_uri(self.tracking_uri)
@@ -240,7 +247,6 @@ class MLflowModelRegistry:
                 # If dummy test weights or unsupported format, fallback to baseline interface
                 return BaselineTfidfClassifier(model_version=version_label)
         else:
-            return DistilBertTicketClassifier(
-                model_path_or_name="distilbert-base-uncased",
-                model_version=version_label,
-            )
+            # When model artifact lacks a HuggingFace checkpoint, fall back to BaselineTfidfClassifier
+            # rather than instantiating an untrained base model with random weights
+            return BaselineTfidfClassifier(model_version=version_label)

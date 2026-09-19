@@ -76,9 +76,10 @@ def retraining_flow(
         test_df=train_results["test_df"],
     )
 
-    # Step 6: Quality Gate Evaluation
+    # Step 6: Quality Gate Evaluation (Side-by-side on identical test split)
     gate_decision = quality_gate_task(
         candidate_metrics=eval_metrics,
+        benchmark_test_df=train_results["test_df"],
         model_name=model_name,
         min_absolute_macro_f1=min_absolute_macro_f1,
         allowed_regression_margin=allowed_regression_margin,

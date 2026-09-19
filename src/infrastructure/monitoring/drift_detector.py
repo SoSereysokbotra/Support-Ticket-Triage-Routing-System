@@ -85,8 +85,11 @@ class DriftDetector:
         if "category" in ref.columns and "predicted_category" not in ref.columns:
             ref["predicted_category"] = ref["category"]
         if "confidence" not in ref.columns:
-            # Reference baseline has high nominal confidence
-            ref["confidence"] = 0.95
+            # Generate realistic baseline confidence distribution (mean ~0.92, std ~0.04)
+            # to avoid degenerate 0-variance distribution in two-sample KS testing
+            np.random.seed(42)
+            simulated_conf = np.clip(np.random.normal(loc=0.92, scale=0.04, size=len(ref)), 0.65, 0.99)
+            ref["confidence"] = np.round(simulated_conf, 4)
 
         return ref
 

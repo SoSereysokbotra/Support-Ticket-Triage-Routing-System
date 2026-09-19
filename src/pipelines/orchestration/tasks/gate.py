@@ -20,6 +20,7 @@ class GateDecision:
 def quality_gate_task(
     candidate_metrics: Dict[str, Any],
     registry: Optional[MLflowModelRegistry] = None,
+    benchmark_test_df: Optional[Any] = None,
     model_name: str = "ticket-classifier",
     min_absolute_macro_f1: float = 0.75,
     allowed_regression_margin: float = 0.02,
@@ -27,6 +28,7 @@ def quality_gate_task(
     """
     Quality Evaluation Gate.
     Compares candidate model's macro-F1 against current production model in MLflow.
+    When benchmark_test_df is provided, evaluates both models side-by-side on the identical test split.
     Blocks regressed models from promotion to production.
     """
     print("=" * 60)
@@ -75,15 +77,29 @@ def quality_gate_task(
             reason=reason,
         )
 
+    # 3. Resolve production baseline: evaluate side-by-side if benchmark split is provided
     prod_f1 = 0.85
-    if hasattr(prod_version, "metrics") and isinstance(prod_version.metrics, dict) and prod_version.metrics:
-        prod_f1 = float(prod_version.metrics.get("test_macro_f1", prod_version.metrics.get("macro_f1", 0.85)))
-    elif prod_version and getattr(prod_version, "run_id", None) and isinstance(prod_version.run_id, str):
+    evaluated_side_by_side = False
+    if benchmark_test_df is not None and hasattr(benchmark_test_df, "empty") and not benchmark_test_df.empty:
         try:
-            run_data = reg.client.get_run(prod_version.run_id).data
-            prod_f1 = float(run_data.metrics.get("test_macro_f1", run_data.metrics.get("macro_f1", 0.85)))
-        except Exception:
-            prod_f1 = 0.85
+            from src.pipelines.training.evaluate import evaluate_classifier
+            prod_model = reg.load_model_by_version_or_alias(model_name=model_name, alias="production")
+            prod_eval = evaluate_classifier(prod_model, benchmark_test_df)
+            prod_f1 = float(prod_eval["macro_f1"])
+            evaluated_side_by_side = True
+            print(f"[QualityGateTask] Side-by-side production model benchmark Macro-F1 on test split: {prod_f1:.4f}")
+        except Exception as e:
+            print(f"[QualityGateTask] Side-by-side benchmark evaluation fallback: {e}")
+
+    if not evaluated_side_by_side:
+        if hasattr(prod_version, "metrics") and isinstance(prod_version.metrics, dict) and prod_version.metrics:
+            prod_f1 = float(prod_version.metrics.get("test_macro_f1", prod_version.metrics.get("macro_f1", 0.85)))
+        elif prod_version and getattr(prod_version, "run_id", None) and isinstance(prod_version.run_id, str):
+            try:
+                run_data = reg.client.get_run(prod_version.run_id).data
+                prod_f1 = float(run_data.metrics.get("test_macro_f1", run_data.metrics.get("macro_f1", 0.85)))
+            except Exception:
+                prod_f1 = 0.85
 
     delta_f1 = candidate_f1 - prod_f1
     required_f1 = prod_f1 - allowed_regression_margin

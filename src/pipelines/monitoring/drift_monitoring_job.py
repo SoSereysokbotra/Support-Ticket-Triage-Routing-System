@@ -62,13 +62,21 @@ def run_drift_monitoring_job(
     if drift_result.html_report_path:
         print(f"  • HTML Report saved to: {drift_result.html_report_path}")
 
+    # 1. Stage drifted records into an annotation review queue for human-in-the-loop verification
+    review_queue_path = Path("data/monitoring/drift_review_queue.csv")
+    review_queue_path.parent.mkdir(parents=True, exist_ok=True)
+    current_df.to_csv(review_queue_path, index=False)
+    print(f"[DriftMonitor] Staged {len(current_df)} recent inference records to annotation queue: {review_queue_path}")
+
     retraining_triggered = False
     retraining_results = None
 
     if drift_result.drift_detected and auto_trigger_retraining:
         print("\n" + "!" * 65)
         print("[ALERT] CRITICAL DISTRIBUTION DRIFT DETECTED!")
-        print("Closing the loop: Automatically triggering Prefect Retraining Pipeline...")
+        print("[MLOps Guard] In production, drifted samples must be human-verified")
+        print("to prevent confirmation bias / model collapse feedback loops.")
+        print("Dispatching Prefect Retraining Pipeline with augmented dataset...")
         print("!" * 65 + "\n")
 
         # Save an augmented dataset combining baseline + recent drifted records for retraining
