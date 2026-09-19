@@ -1,11 +1,12 @@
-version: '3.8'
-
 services:
   # 1. FastAPI Real-Time Inference & Routing Service
+  #    This is the only service that builds. The other two reuse the same image
+  #    so `docker compose up --build` produces one image, not three.
   api:
     build:
       context: .
       dockerfile: Dockerfile
+    image: ticket-triage:latest
     container_name: ticket-triage-api
     ports:
       - "8000:8000"
@@ -17,13 +18,16 @@ services:
       - ./models:/app/models
       - ./mlruns.db:/app/mlruns.db
       - ./mlruns:/app/mlruns
+    deploy:
+      resources:
+        limits:
+          # Two DistilBERT models + torch runtime; keep a runaway from taking the host
+          memory: 3g
     restart: unless-stopped
 
   # 2. Streamlit MLOps Monitoring Dashboard
   dashboard:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ticket-triage:latest
     container_name: ticket-triage-dashboard
     command: ["streamlit", "run", "src/presentation/dashboard/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
     ports:
@@ -35,20 +39,45 @@ services:
       - ./models:/app/models
       - ./mlruns.db:/app/mlruns.db
       - ./mlruns:/app/mlruns
+    deploy:
+      resources:
+        limits:
+          memory: 1500m
+    # The image's HEALTHCHECK targets the API; override per service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
     depends_on:
       - api
     restart: unless-stopped
 
   # 3. MLflow Tracking & Model Registry Server
   mlflow:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ticket-triage:latest
     container_name: ticket-triage-mlflow
-    command: ["mlflow", "server", "--backend-store-uri", "sqlite:///mlruns.db", "--default-artifact-root", "./mlruns", "--host", "0.0.0.0", "--port", "5000"]
+    # MLflow 3.x defaults to 4 uvicorn workers + a background job runner, each importing the
+    # full mlflow stack. One worker is plenty for a local tracking UI and keeps RAM ~500MB.
+    command: ["mlflow", "server", "--backend-store-uri", "sqlite:///mlruns.db", "--default-artifact-root", "./mlruns", "--host", "0.0.0.0", "--port", "5000", "--workers", "1"]
+    environment:
+      - MLFLOW_SERVER_ENABLE_JOB_EXECUTION=false
     ports:
       - "5000:5000"
     volumes:
       - ./mlruns.db:/app/mlruns.db
       - ./mlruns:/app/mlruns
+    deploy:
+      resources:
+        limits:
+          memory: 1500m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      - api
     restart: unless-stopped
