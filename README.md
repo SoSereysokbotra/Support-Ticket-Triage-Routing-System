@@ -152,18 +152,27 @@ python -m venv .venv
 - API Docs: `http://localhost:8000/docs`
 - Health Status: `http://localhost:8000/api/v1/health`
 
-### 5. Launch Streamlit MLOps Monitoring Dashboard
+### 5. Launch React + Tailwind CSS Triage Portal
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+- Portal URL: `http://localhost:5173`
+- Features: Live AI ticket classification as you type, agent triage queue, and MLOps control center.
+
+### 6. Launch Streamlit MLOps Monitoring Dashboard
 ```powershell
 .\.venv\Scripts\streamlit run src/presentation/dashboard/app.py
 ```
 - Dashboard URL: `http://localhost:8501`
 
-### 6. Run Closed-Loop Drift Detection & Auto-Retraining Trigger
+### 7. Run Closed-Loop Drift Detection & Auto-Retraining Trigger
 ```powershell
 .\.venv\Scripts\python -m src.pipelines.monitoring.drift_monitoring_job --window-size 100 --drift-threshold 0.30
 ```
 
-### 7. Run Entire Stack with Docker Compose
+### 8. Run Entire Stack with Docker Compose
 ```powershell
 docker-compose up --build
 ```
