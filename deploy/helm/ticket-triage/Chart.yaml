@@ -1,0 +1,14 @@
+apiVersion: v2
+name: ticket-triage
+description: Production Helm chart for Support Ticket Triage & Routing System
+type: application
+version: 0.1.0
+appVersion: "0.3.0"
+keywords:
+  - mlops
+  - fastapi
+  - react
+  - mlflow
+  - feast
+maintainers:
+  - name: ML Platform Team

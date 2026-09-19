@@ -1,0 +1,111 @@
+global:
+  environment: local
+
+# 1. FastAPI Real-Time Inference Service
+api:
+  name: api
+  replicaCount: 1
+  image:
+    repository: ticket-triage
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8000
+  env:
+    FEAST_USAGE: "False"
+    MLFLOW_TRACKING_URI: "http://ticket-triage-mlflow:5000"
+  resources:
+    limits:
+      cpu: "2"
+      memory: 2Gi
+    requests:
+      cpu: "500m"
+      memory: 512Mi
+  probes:
+    liveness:
+      path: /health
+      initialDelaySeconds: 20
+      periodSeconds: 15
+      failureThreshold: 3
+    readiness:
+      path: /health
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      failureThreshold: 3
+
+# 2. React + Nginx Frontend
+frontend:
+  name: frontend
+  replicaCount: 1
+  image:
+    repository: ticket-triage-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    limits:
+      cpu: "500m"
+      memory: 256Mi
+    requests:
+      cpu: "100m"
+      memory: 64Mi
+
+# 3. MLflow Model Registry Server
+mlflow:
+  name: mlflow
+  replicaCount: 1
+  image:
+    repository: ticket-triage
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 5000
+  command:
+    - "mlflow"
+    - "server"
+    - "--backend-store-uri"
+    - "sqlite:///app/data/mlruns.db"
+    - "--default-artifact-root"
+    - "/app/mlruns"
+    - "--host"
+    - "0.0.0.0"
+    - "--port"
+    - "5000"
+    - "--workers"
+    - "1"
+  resources:
+    limits:
+      cpu: "1"
+      memory: 1500Mi
+    requests:
+      cpu: "200m"
+      memory: 256Mi
+
+# 4. Shared Persistent Storage (PVC)
+persistence:
+  enabled: true
+  storageClass: "local-path"
+  accessMode: ReadWriteOnce
+  size: 2Gi
+
+# 5. Ingress Controller Routing (Traefik on k3d)
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+  hosts:
+    - host: ""
+      paths:
+        - path: /api
+          pathType: Prefix
+          service: api
+          port: 8000
+        - path: /
+          pathType: Prefix
+          service: frontend
+          port: 80

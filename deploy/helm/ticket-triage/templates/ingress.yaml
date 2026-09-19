@@ -1,0 +1,59 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "ticket-triage.fullname" . }}
+  labels:
+    {{- include "ticket-triage.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - {{- if .host }}
+      host: {{ .host | quote }}
+      {{- end }}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "ticket-triage.fullname" $ }}-api
+                port:
+                  number: {{ $.Values.api.service.port }}
+          - path: /docs
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "ticket-triage.fullname" $ }}-api
+                port:
+                  number: {{ $.Values.api.service.port }}
+          - path: /openapi.json
+            pathType: Exact
+            backend:
+              service:
+                name: {{ include "ticket-triage.fullname" $ }}-api
+                port:
+                  number: {{ $.Values.api.service.port }}
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: {{ include "ticket-triage.fullname" $ }}-api
+                port:
+                  number: {{ $.Values.api.service.port }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "ticket-triage.fullname" $ }}-frontend
+                port:
+                  number: {{ $.Values.frontend.service.port }}
+    {{- end }}
+{{- end }}
