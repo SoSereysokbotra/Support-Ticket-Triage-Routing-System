@@ -7,10 +7,11 @@ statistical drift analysis on demand.
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
+
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from src.infrastructure.monitoring.prediction_logger import PredictionLogger
 from src.infrastructure.monitoring.drift_detector import DriftDetector
+from src.infrastructure.monitoring.prediction_logger import PredictionLogger
 
 router = APIRouter(prefix="/api/v1/monitoring", tags=["Monitoring & Drift"])
 

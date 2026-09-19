@@ -1,8 +1,7 @@
 import hashlib
-import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import mlflow
 from mlflow.entities.model_registry import ModelVersion

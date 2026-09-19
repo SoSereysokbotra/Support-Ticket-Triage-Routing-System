@@ -2,8 +2,8 @@
 Integration Tests for Monitoring API Endpoints
 """
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
 from src.infrastructure.models.baseline_classifier import BaselineTfidfClassifier
 from src.infrastructure.monitoring.prediction_logger import PredictionLogger

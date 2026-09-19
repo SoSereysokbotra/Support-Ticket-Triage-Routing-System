@@ -3,6 +3,7 @@ Unit Tests for DriftDetector Engine
 """
 
 from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -24,7 +25,7 @@ def sample_reference_df():
 
 def test_in_distribution_data_has_no_drift(sample_reference_df, tmp_path):
     detector = DriftDetector(reference_df=sample_reference_df, reports_dir=tmp_path)
-    
+
     # Current batch sampled from same distribution
     np.random.seed(123)
     current_df = pd.DataFrame({

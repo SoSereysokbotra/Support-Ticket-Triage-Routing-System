@@ -3,8 +3,9 @@ Unit Tests for PredictionLogger
 """
 
 from pathlib import Path
-import pytest
+
 import pandas as pd
+import pytest
 
 from src.infrastructure.monitoring.prediction_logger import PredictionLogger
 

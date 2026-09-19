@@ -207,8 +207,8 @@ class PredictionLogger:
 
             cursor.execute(
                 """
-                SELECT predicted_category, COUNT(*) 
-                FROM inference_logs 
+                SELECT predicted_category, COUNT(*)
+                FROM inference_logs
                 GROUP BY predicted_category;
                 """
             )

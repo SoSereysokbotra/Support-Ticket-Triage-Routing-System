@@ -39,4 +39,4 @@ def test_feast_historical_feature_retrieval(feature_store: FeastFeatureStoreAdap
     assert "customer_tier" in hist_df.columns
     assert "past_ticket_count" in hist_df.columns
     assert "is_vip" in hist_df.columns
-    assert hist_df[hist_df["customer_id"] == "CUST-1001"]["is_vip"].iloc[0] == True
+    assert bool(hist_df[hist_df["customer_id"] == "CUST-1001"]["is_vip"].iloc[0]) is True

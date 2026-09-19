@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional
 
 from src.domain.entities.category import TicketCategory, TicketUrgency
 

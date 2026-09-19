@@ -1,0 +1,31 @@
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes (syntax & logic errors, undefined vars, unused imports)
+    "I",   # isort (clean import sorting)
+    "B",   # flake8-bugbear (common bug patterns)
+]
+ignore = [
+    "E501", # line too long (handled by formatter or line wrapping)
+    "B008", # allow FastAPI Depends() in route signatures
+    "E402", # module level import not at top of file (needed for sys.path fixes in scripts)
+    "B905", # zip() without strict=
+    "B904", # raise HTTPException without from err
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["F401", "F811", "B008", "E402"]
+"src/presentation/api/routes/*" = ["B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "strict"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+]

@@ -7,7 +7,6 @@ feature/target drift reports (Evidently AI), and closed-loop retraining triggers
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
 # Ensure project root is on sys.path for Streamlit runner
@@ -15,7 +14,6 @@ ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-import pandas as pd
 import streamlit as st
 
 # Configure page
@@ -73,18 +71,18 @@ def main():
     # Sidebar Controls
     with st.sidebar:
         st.header("⚙️ Controls")
-        auto_refresh = st.checkbox("Auto-refresh Data", value=True)
-        sample_limit = st.slider("Max Logs to Inspect", min_value=100, max_value=2000, value=500, step=100)
-        
+        _auto_refresh = st.checkbox("Auto-refresh Data", value=True)
+        _sample_limit = st.slider("Max Logs to Inspect", min_value=100, max_value=2000, value=500, step=100)
+
         st.divider()
         st.subheader("🚨 Drift Simulation Tool")
         st.write("Inject Out-Of-Distribution traffic (e.g. Legal/Crypto jargon) to demonstrate automated drift detection and closed-loop retraining.")
-        
+
         if st.button("🧪 Inject Synthetic Drift Batch", type="primary"):
             with st.spinner("Injecting 50 out-of-distribution tickets..."):
                 from src.infrastructure.monitoring.prediction_logger import PredictionLogger
                 logger = PredictionLogger()
-                
+
                 drift_texts = [
                     "Liquidity pool staking rewards yield farming smart contract vulnerability audit",
                     "Class action lawsuit arbitration clause breach of fiduciary duty litigation settlement",
@@ -92,7 +90,7 @@ def main():
                     "Securities and Exchange Commission subpoena deposition deposition transcript discovery",
                     "MEV bot front-running decentralized exchange slippage tolerance liquidation",
                 ] * 10
-                
+
                 records = [
                     {
                         "ticket_id": f"DRIFT-{i:04d}",
@@ -114,7 +112,7 @@ def main():
     total_reqs = summary.get("total_requests", 0)
     avg_conf = summary.get("avg_confidence", 0.0)
     avg_lat = summary.get("avg_latency_ms", 0.0)
-    
+
     with col1:
         st.markdown(
             f"""<div class="kpi-card"><div class="kpi-label">Total Inferences</div><div class="kpi-value">{total_reqs:,}</div></div>""",
@@ -133,7 +131,7 @@ def main():
         )
     with col4:
         st.markdown(
-            f"""<div class="kpi-card"><div class="kpi-label">Active Model Alias</div><div class="kpi-value" style="font-size: 1.5rem; color: #a855f7;">production (v1)</div></div>""",
+            """<div class="kpi-card"><div class="kpi-label">Active Model Alias</div><div class="kpi-value" style="font-size: 1.5rem; color: #a855f7;">production (v1)</div></div>""",
             unsafe_allow_html=True,
         )
 
@@ -147,7 +145,7 @@ def main():
             st.info("No inference logs recorded yet. Send requests to FastAPI `/api/v1/predict` or use the sidebar simulation tool.")
         else:
             col_chart1, col_chart2 = st.columns(2)
-            
+
             with col_chart1:
                 st.subheader("Predicted Category Distribution")
                 cat_counts = df["predicted_category"].value_counts().reset_index()

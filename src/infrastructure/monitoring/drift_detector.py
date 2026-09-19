@@ -10,7 +10,7 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import numpy as np
 import pandas as pd
@@ -192,7 +192,7 @@ class DriftDetector:
         """
         html_file = self.reports_dir / f"drift_report_{report_timestamp}.html"
         try:
-            from evidently.metric_preset import DataDriftPreset, TargetDriftPreset
+            from evidently.metric_preset import DataDriftPreset
             from evidently.report import Report
 
             ref_subset = self.reference_df[["text_length", "word_count", "confidence"]].dropna()

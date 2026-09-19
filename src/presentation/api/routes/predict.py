@@ -1,4 +1,5 @@
 import time
+
 from fastapi import APIRouter, HTTPException, Request
 
 from src.application.dto.ticket_dto import TicketInputDTO

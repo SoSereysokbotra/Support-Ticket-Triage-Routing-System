@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-import pandas as pd
 from prefect import task
 
 from src.infrastructure.registry.mlflow_registry import MLflowModelRegistry
@@ -40,7 +39,7 @@ def register_model_task(
         clean_key = f"test_f1_{cat.lower().replace(' ', '_').replace('&', 'and')}"
         mlflow_metrics[clean_key] = float(f1_score)
 
-    print(f"[RegisterTask] Logging training run to MLflow...")
+    print("[RegisterTask] Logging training run to MLflow...")
     run_id = reg.log_training_run(
         params=params,
         metrics=mlflow_metrics,

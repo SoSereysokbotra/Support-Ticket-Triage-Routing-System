@@ -1,5 +1,4 @@
 import json
-import os
 import sys
 from pathlib import Path
 from typing import Dict
@@ -14,7 +13,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 from datasets import Dataset
-from sklearn.metrics import accuracy_score, f1_score, precision_recall_fscore_support
+from sklearn.metrics import accuracy_score, f1_score
 from sklearn.utils.class_weight import compute_class_weight
 from transformers import (
     AutoModelForSequenceClassification,
@@ -171,7 +170,7 @@ def train_model(
 
     # 7. Train
     print("Starting training loop...")
-    train_result = trainer.train()
+    _ = trainer.train()
     print("Training finished.")
 
     # 8. Evaluate on Held-out Test Set

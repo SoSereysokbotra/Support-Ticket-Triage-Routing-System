@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock
+
 import pytest
 
 from src.pipelines.orchestration.tasks.gate import GateDecision, quality_gate_task
