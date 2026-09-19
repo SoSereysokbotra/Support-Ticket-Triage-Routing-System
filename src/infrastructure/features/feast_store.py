@@ -5,10 +5,12 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 from feast import FeatureStore
 
+from src.domain.interfaces.feature_store_interface import IFeatureStore
 
-class FeastFeatureStoreAdapter:
+
+class FeastFeatureStoreAdapter(IFeatureStore):
     """
-    Adapter for Feast Feature Store.
+    Adapter for Feast Feature Store implementing IFeatureStore.
     Provides a unified interface for both offline historical training joins
     and low-latency online serving queries, preventing training-serving skew.
     """

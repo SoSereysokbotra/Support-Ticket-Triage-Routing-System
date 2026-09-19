@@ -79,7 +79,9 @@ async def promote_model_version(
             request.app.state.classifier = new_classifier
             request.app.state.predict_use_case = PredictTicketUseCase(
                 classifier=new_classifier,
+                urgency_classifier=getattr(request.app.state, "urgency_classifier", None),
                 router=request.app.state.route_use_case,
+                feature_store=getattr(request.app.state, "feature_store", None),
             )
             reloaded = True
 
@@ -111,7 +113,9 @@ async def rollback_production_model(
         request.app.state.classifier = new_classifier
         request.app.state.predict_use_case = PredictTicketUseCase(
             classifier=new_classifier,
+            urgency_classifier=getattr(request.app.state, "urgency_classifier", None),
             router=request.app.state.route_use_case,
+            feature_store=getattr(request.app.state, "feature_store", None),
         )
 
         return RollbackResponse(
@@ -137,7 +141,9 @@ async def reload_production_model(request: Request) -> Dict[str, Any]:
         request.app.state.classifier = new_classifier
         request.app.state.predict_use_case = PredictTicketUseCase(
             classifier=new_classifier,
+            urgency_classifier=getattr(request.app.state, "urgency_classifier", None),
             router=request.app.state.route_use_case,
+            feature_store=getattr(request.app.state, "feature_store", None),
         )
         return {
             "status": "success",

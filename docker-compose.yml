@@ -11,12 +11,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - MLFLOW_TRACKING_URI=sqlite:///mlruns.db
+      - MLFLOW_TRACKING_URI=sqlite:///app/data/mlruns.db
       - FEAST_USAGE=False
     volumes:
       - ./data:/app/data
       - ./models:/app/models
-      - ./mlruns.db:/app/mlruns.db
       - ./mlruns:/app/mlruns
     deploy:
       resources:
@@ -33,11 +32,10 @@ services:
     ports:
       - "8501:8501"
     environment:
-      - MLFLOW_TRACKING_URI=sqlite:///mlruns.db
+      - MLFLOW_TRACKING_URI=sqlite:///app/data/mlruns.db
     volumes:
       - ./data:/app/data
       - ./models:/app/models
-      - ./mlruns.db:/app/mlruns.db
       - ./mlruns:/app/mlruns
     deploy:
       resources:
@@ -60,13 +58,13 @@ services:
     container_name: ticket-triage-mlflow
     # MLflow 3.x defaults to 4 uvicorn workers + a background job runner, each importing the
     # full mlflow stack. One worker is plenty for a local tracking UI and keeps RAM ~500MB.
-    command: ["mlflow", "server", "--backend-store-uri", "sqlite:///mlruns.db", "--default-artifact-root", "./mlruns", "--host", "0.0.0.0", "--port", "5000", "--workers", "1"]
+    command: ["mlflow", "server", "--backend-store-uri", "sqlite:///app/data/mlruns.db", "--default-artifact-root", "/app/mlruns", "--host", "0.0.0.0", "--port", "5000", "--workers", "1"]
     environment:
       - MLFLOW_SERVER_ENABLE_JOB_EXECUTION=false
     ports:
       - "5000:5000"
     volumes:
-      - ./mlruns.db:/app/mlruns.db
+      - ./data:/app/data
       - ./mlruns:/app/mlruns
     deploy:
       resources:

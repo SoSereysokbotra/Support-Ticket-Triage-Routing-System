@@ -80,17 +80,27 @@ async def predict_ticket_batch(
         raise HTTPException(status_code=503, detail="Predict use case is not initialized.")
 
     start_time = time.perf_counter()
-    results = []
-    log_records = []
-
-    for item in payload.tickets:
-        dto = TicketInputDTO(
+    input_dtos = [
+        TicketInputDTO(
             text=item.text,
             title=item.title,
             customer_id=item.customer_id,
             urgency_hint=item.urgency_hint,
         )
-        response_dto = use_case.execute(dto)
+        for item in payload.tickets
+    ]
+
+    try:
+        response_dtos = use_case.batch_execute(input_dtos)
+    except ValueError as err:
+        raise HTTPException(status_code=422, detail=str(err))
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=f"Internal prediction error: {str(err)}")
+
+    results = []
+    log_records = []
+
+    for item, response_dto in zip(payload.tickets, response_dtos):
         results.append(
             TicketPredictResponse(
                 ticket_id=response_dto.ticket_id,
