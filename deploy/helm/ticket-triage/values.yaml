@@ -109,3 +109,16 @@ ingress:
           pathType: Prefix
           service: frontend
           port: 80
+
+# 6. Observability Stack (Prometheus & Grafana)
+monitoring:
+  enabled: true
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    port: 9090
+    scrapeInterval: 5s
+  grafana:
+    image: grafana/grafana:10.4.0
+    port: 3000
+    adminPassword: admin
+

@@ -1,0 +1,20 @@
+{{- if .Values.monitoring.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ticket-triage.fullname" . }}-grafana
+  labels:
+    {{- include "ticket-triage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.monitoring.grafana.port | default 3000 }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: {{ include "ticket-triage.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: grafana
+{{- end }}

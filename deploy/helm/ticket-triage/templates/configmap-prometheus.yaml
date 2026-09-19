@@ -1,0 +1,24 @@
+{{- if .Values.monitoring.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ticket-triage.fullname" . }}-prometheus-config
+  labels:
+    {{- include "ticket-triage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: prometheus
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: {{ .Values.monitoring.prometheus.scrapeInterval | default "5s" }}
+      evaluation_interval: 5s
+
+    scrape_configs:
+      - job_name: 'ticket-triage-api'
+        metrics_path: '/metrics'
+        static_configs:
+          - targets: ['{{ include "ticket-triage.fullname" . }}-api:{{ .Values.api.service.port }}']
+
+      - job_name: 'traefik-ingress'
+        static_configs:
+          - targets: ['traefik.kube-system.svc.cluster.local:9100']
+{{- end }}

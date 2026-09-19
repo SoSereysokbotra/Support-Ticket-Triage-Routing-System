@@ -48,6 +48,13 @@ spec:
                 name: {{ include "ticket-triage.fullname" $ }}-api
                 port:
                   number: {{ $.Values.api.service.port }}
+          - path: /metrics
+            pathType: Exact
+            backend:
+              service:
+                name: {{ include "ticket-triage.fullname" $ }}-api
+                port:
+                  number: {{ $.Values.api.service.port }}
           - path: /
             pathType: Prefix
             backend:

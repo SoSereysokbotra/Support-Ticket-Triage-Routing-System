@@ -3,8 +3,15 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+
+from src.infrastructure.monitoring.metrics import (
+    HTTP_REQUESTS_TOTAL,
+    HTTP_REQUEST_DURATION_SECONDS,
+    get_metrics_content_type,
+    get_prometheus_metrics,
+)
 
 from src.application.use_cases.predict_ticket import PredictTicketUseCase
 from src.application.use_cases.route_ticket import RouteTicketUseCase
@@ -118,6 +125,22 @@ def create_app(model_override=None, registry_override=None, logger_override=None
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.middleware("http")
+    async def prometheus_metrics_middleware(request: Request, call_next):
+        start_time = time.time()
+        response = await call_next(request)
+        duration = time.time() - start_time
+        path = request.url.path
+        if path != "/metrics":
+            status_code = str(response.status_code)
+            HTTP_REQUESTS_TOTAL.labels(method=request.method, endpoint=path, status_code=status_code).inc()
+            HTTP_REQUEST_DURATION_SECONDS.labels(method=request.method, endpoint=path).observe(duration)
+        return response
+
+    @app.get("/metrics", include_in_schema=False)
+    async def prometheus_metrics():
+        return Response(content=get_prometheus_metrics(), media_type=get_metrics_content_type())
 
     app.include_router(health_router)
     app.include_router(predict_router)

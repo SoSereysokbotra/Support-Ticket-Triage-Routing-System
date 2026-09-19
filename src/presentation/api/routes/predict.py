@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from src.application.dto.ticket_dto import TicketInputDTO
 from src.application.use_cases.predict_ticket import PredictTicketUseCase
+from src.infrastructure.monitoring.metrics import record_prediction_telemetry
 from src.presentation.api.schemas.ticket_schema import (
     TicketPredictBatchRequest,
     TicketPredictBatchResponse,
@@ -50,6 +51,17 @@ async def predict_ticket(
                 )
             except Exception:
                 pass  # Non-blocking telemetry
+
+        # Record Prometheus metric
+        record_prediction_telemetry({
+            "predicted_category": response_dto.predicted_category,
+            "priority_level": response_dto.priority_level,
+            "assigned_team": response_dto.assigned_team,
+            "auto_routed": response_dto.auto_routed,
+            "confidence": response_dto.confidence,
+            "latency_ms": response_dto.latency_ms,
+            "model_version": response_dto.model_version,
+        })
 
         return TicketPredictResponse(
             ticket_id=response_dto.ticket_id,
@@ -140,6 +152,17 @@ async def predict_ticket_batch(
             logger.log_batch(log_records)
         except Exception:
             pass
+
+    for r in results:
+        record_prediction_telemetry({
+            "predicted_category": r.predicted_category,
+            "priority_level": r.priority_level,
+            "assigned_team": r.assigned_team,
+            "auto_routed": r.auto_routed,
+            "confidence": r.confidence,
+            "latency_ms": r.latency_ms,
+            "model_version": r.model_version,
+        })
 
     return TicketPredictBatchResponse(
         results=results,

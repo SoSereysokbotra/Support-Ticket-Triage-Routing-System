@@ -1,0 +1,134 @@
+{{- if .Values.monitoring.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ticket-triage.fullname" . }}-grafana-datasources
+  labels:
+    {{- include "ticket-triage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://{{ include "ticket-triage.fullname" . }}-prometheus:{{ .Values.monitoring.prometheus.port | default 9090 }}
+        isDefault: true
+        editable: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ticket-triage.fullname" . }}-grafana-dashboards-provider
+  labels:
+    {{- include "ticket-triage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+data:
+  provider.yaml: |
+    apiVersion: 1
+    providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ticket-triage.fullname" . }}-grafana-dashboard-triage
+  labels:
+    {{- include "ticket-triage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+data:
+  triage-dashboard.json: |
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "id": null,
+      "links": [],
+      "liveNow": true,
+      "panels": [
+        {
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+          "id": 1,
+          "title": "Total Predictions",
+          "type": "stat",
+          "targets": [{ "expr": "sum(triage_predictions_total) or vector(0)", "instant": true, "refId": "A" }],
+          "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "mappings": [] } }
+        },
+        {
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+          "id": 2,
+          "title": "Auto-Routed Tickets",
+          "type": "stat",
+          "targets": [{ "expr": "sum(triage_predictions_total{auto_routed=\"true\"}) or vector(0)", "instant": true, "refId": "A" }],
+          "fieldConfig": { "defaults": { "color": { "fixedColor": "green", "mode": "fixed" } } }
+        },
+        {
+          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+          "id": 3,
+          "title": "Human Triage Queue",
+          "type": "stat",
+          "targets": [{ "expr": "sum(triage_predictions_total{auto_routed=\"false\"}) or vector(0)", "instant": true, "refId": "A" }],
+          "fieldConfig": { "defaults": { "color": { "fixedColor": "orange", "mode": "fixed" } } }
+        },
+        {
+          "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+          "id": 4,
+          "title": "Inference Error Rate",
+          "type": "stat",
+          "targets": [{ "expr": "(sum(rate(http_requests_total{status_code=~\"5..\"}[1m])) / sum(rate(http_requests_total[1m]))) * 100 or vector(0)", "instant": true, "refId": "A" }],
+          "fieldConfig": { "defaults": { "unit": "percent", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } } }
+        },
+        {
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+          "id": 5,
+          "title": "HTTP Request Rate (RPS) by Endpoint",
+          "type": "timeseries",
+          "targets": [{ "expr": "sum(rate(http_requests_total[1m])) by (endpoint)", "legendFormat": "{{ "{{endpoint}}" }}", "refId": "A" }]
+        },
+        {
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+          "id": 6,
+          "title": "API Request Latency (p50 / p95)",
+          "type": "timeseries",
+          "targets": [
+            { "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by (le)) * 1000", "legendFormat": "p95 (ms)", "refId": "A" },
+            { "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[1m])) by (le)) * 1000", "legendFormat": "p50 (ms)", "refId": "B" }
+          ],
+          "fieldConfig": { "defaults": { "unit": "ms" } }
+        },
+        {
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+          "id": 7,
+          "title": "Predictions by Category",
+          "type": "barchart",
+          "targets": [{ "expr": "sum(triage_predictions_total) by (predicted_category)", "legendFormat": "{{ "{{predicted_category}}" }}", "refId": "A" }]
+        },
+        {
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+          "id": 8,
+          "title": "Auto-Routing vs Human Escalation Ratio",
+          "type": "piechart",
+          "targets": [{ "expr": "sum(triage_predictions_total) by (auto_routed)", "legendFormat": "Auto-Routed: {{ "{{auto_routed}}" }}", "refId": "A" }]
+        }
+      ],
+      "refresh": "5s",
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": ["mlops", "support-ticket-triage", "production"],
+      "time": { "from": "now-15m", "to": "now" },
+      "timepicker": { "refresh_intervals": ["5s", "10s", "30s", "1m"] },
+      "timezone": "browser",
+      "title": "Support Ticket Triage — Operations & MLOps Golden Signals",
+      "uid": "ticket-triage-mlops",
+      "version": 1
+    }
+{{- end }}
