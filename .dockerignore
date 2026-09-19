@@ -40,3 +40,16 @@ data/processed/
 data/monitoring/reports/*.html
 logs/
 *.log
+
+# Trained model weights are bind-mounted at runtime (see docker-compose.yml), never baked in
+models/
+
+# Frontend is built/served separately; node_modules alone is 100MB+
+frontend/
+
+# Docs, agent configs, and tests are not needed inside the image
+*.md
+.agents/
+.claude/
+tests/
+bentofile.yaml
