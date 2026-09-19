@@ -150,7 +150,7 @@ python -m venv .venv
 .\.venv\Scripts\uvicorn src.presentation.api.app:app --host 0.0.0.0 --port 8000 --reload
 ```
 - API Docs: `http://localhost:8000/docs`
-- Health Status: `http://localhost:8000/api/v1/health`
+- Health Status: `http://localhost:8000/health`
 
 ### 5. Launch React + Tailwind CSS Triage Portal
 ```powershell
@@ -174,11 +174,14 @@ npm run dev
 
 ### 8. Run Entire Stack with Docker Compose
 ```powershell
-docker-compose up --build
+docker compose up --build -d
 ```
+- **React Triage Portal**: `http://localhost:5173`
 - **FastAPI Service**: `http://localhost:8000`
 - **Streamlit Dashboard**: `http://localhost:8501`
 - **MLflow Tracking Server**: `http://localhost:5000`
+
+The first build downloads ~1.5 GB of Python wheels; later builds reuse the cached layer unless `requirements.txt` changes. Stop everything with `docker compose down`.
 
 ---
 

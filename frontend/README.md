@@ -1,6 +1,6 @@
 # AutoTriage React + Tailwind CSS Frontend Portal
 
-A modern, responsive, dark-mode **React + Vite + Tailwind CSS** frontend portal for the **Support Ticket Triage & Routing MLOps System**.
+A responsive **React + Vite + Tailwind CSS** frontend portal with a light, neutral design for the **Support Ticket Triage & Routing MLOps System**.
 
 ---
 
