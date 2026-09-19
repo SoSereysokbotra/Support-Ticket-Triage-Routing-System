@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ticket-triage
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: ticket-triage
+    app.kubernetes.io/part-of: ticket-triage-system
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/SoSereysokbotra/Support-Ticket-Triage-Routing-System.git
+    targetRevision: develop
+    path: deploy/helm/ticket-triage
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
