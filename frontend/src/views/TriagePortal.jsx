@@ -12,12 +12,10 @@ import { predictTicket } from '../services/api';
 import { Layers } from 'lucide-react';
 
 export const TriagePortal = ({ onTicketSubmitted }) => {
-  const [title, setTitle] = useState('Database connection pool timeout');
-  const [text, setText] = useState(
-    'Production PostgreSQL database connection pool exhausted with timeout errors on primary replica. Queries failing across API gateways.'
-  );
+  const [title, setTitle] = useState('');
+  const [text, setText] = useState('');
   const [customerId, setCustomerId] = useState('CUST-1001');
-  const [urgencyHint, setUrgencyHint] = useState('Critical');
+  const [urgencyHint, setUrgencyHint] = useState('');
 
   const [predictionResult, setPredictionResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -117,7 +115,13 @@ export const TriagePortal = ({ onTicketSubmitted }) => {
             onReset={handleReset}
             isLoading={isLoading}
           />
-          <CustomerProfileCard customerId={customerId} features={predictionResult?.customer_features} />
+          <CustomerProfileCard
+            customerId={customerId}
+            features={predictionResult?.customer_features}
+            targetSlaHours={predictionResult?.target_sla_hours}
+            priorityLevel={predictionResult?.priority_level}
+            routingReason={predictionResult?.routing_reason}
+          />
         </div>
 
         <div className="space-y-6">

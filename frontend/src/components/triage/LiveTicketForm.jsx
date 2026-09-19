@@ -114,20 +114,24 @@ export const LiveTicketForm = ({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="ticket-customer" className="label">
-              Customer
+              Customer ID
             </label>
-            <select
+            <input
               id="ticket-customer"
+              type="text"
+              list="customer-presets"
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
-              className="input"
-            >
+              placeholder="e.g. CUST-1001"
+              className="input font-mono"
+            />
+            <datalist id="customer-presets">
               <option value="CUST-1001">CUST-1001 · Enterprise (VIP)</option>
               <option value="CUST-1042">CUST-1042 · Standard</option>
               <option value="CUST-1002">CUST-1002 · Enterprise (VIP)</option>
               <option value="CUST-1005">CUST-1005 · Standard</option>
               <option value="CUST-9999">CUST-9999 · New customer</option>
-            </select>
+            </datalist>
           </div>
 
           <div>

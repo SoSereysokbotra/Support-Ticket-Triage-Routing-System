@@ -89,31 +89,57 @@ export const AgentQueue = ({ sessionTickets = [] }) => {
     setIsLoading(true);
     try {
       const data = await getPredictionLogs(50);
-      if (data && data.logs && data.logs.length > 0) {
-        // Map SQLite WAL logs to table shape
-        const mappedLogs = data.logs.map(log => ({
-          ticket_id: log.ticket_id || `LOG-${log.id}`,
-          title: log.input_title || (log.input_text ? log.input_text.slice(0, 50) : "Support Ticket"),
-          text: log.input_text,
-          customer_id: log.customer_id,
-          predicted_category: log.predicted_category,
-          confidence: log.confidence,
-          priority_level: log.priority_level,
-          target_sla_hours: log.target_sla_hours,
-          assigned_team: log.assigned_team,
-          auto_routed: log.confidence >= 0.65,
-          routing_reason: `Confidence: ${Math.round(log.confidence * 100)}% on model ${log.model_version}`,
-          model_version: log.model_version,
-          latency_ms: log.latency_ms,
-          customer_features: {
-            customer_tier: log.customer_tier,
-            is_vip: log.is_vip === 1 || log.is_vip === true
-          }
-        }));
-        // Merge with session tickets and fallback
-        setTickets([...sessionTickets, ...mappedLogs]);
+      const rawLogs = Array.isArray(data) ? data : (data?.logs || []);
+
+      if (rawLogs.length > 0) {
+        // Map real SQLite WAL logs to table shape
+        const teamMap = {
+          'Hardware': 'Hardware Support Tier-2',
+          'Software': 'Software Application Support',
+          'Network': 'Network Operations Center (NOC)',
+          'Access & Security': 'Identity & Access Management (IAM)',
+          'Billing & Admin': 'Billing & Accounts Operations',
+          'Other': 'General Customer Support',
+        };
+
+        const mappedLogs = rawLogs.map(log => {
+          const isVip = log.is_vip === 1 || log.is_vip === true;
+          const cat = log.predicted_category || 'Other';
+          const conf = typeof log.confidence === 'number' ? log.confidence : 0.85;
+          const assignedTeam = conf < 0.65 ? 'Tier-1 Human Triage Queue' : (teamMap[cat] || 'General Customer Support');
+          const priority = isVip ? 'High' : (conf < 0.65 ? 'Medium' : 'Low');
+          const slaHours = isVip ? 4 : (conf < 0.65 ? 8 : 24);
+
+          return {
+            ticket_id: log.ticket_id || `LOG-${log.id}`,
+            title: log.text ? (log.text.slice(0, 60) + (log.text.length > 60 ? '...' : '')) : 'Support Ticket',
+            text: log.text || '',
+            customer_id: log.customer_id || 'CUST-GUEST',
+            predicted_category: cat,
+            confidence: conf,
+            priority_level: priority,
+            target_sla_hours: slaHours,
+            assigned_team: assignedTeam,
+            auto_routed: conf >= 0.65,
+            routing_reason: conf < 0.65
+              ? `Low confidence (${Math.round(conf * 100)}%). Assigned to human review.`
+              : `Auto-routed to ${assignedTeam} based on ${cat} classification.` + (isVip ? ' [VIP Customer]' : ''),
+            model_version: log.model_version || 'v1',
+            latency_ms: log.latency_ms || 15.0,
+            customer_features: {
+              customer_tier: log.customer_tier || (isVip ? 'Enterprise' : 'Standard'),
+              is_vip: isVip,
+            },
+          };
+        });
+
+        const existingIds = new Set(sessionTickets.map(t => t.ticket_id));
+        const uniqueMapped = mappedLogs.filter(t => !existingIds.has(t.ticket_id));
+        setTickets([...sessionTickets, ...uniqueMapped]);
+      } else if (sessionTickets.length > 0) {
+        setTickets(sessionTickets);
       } else {
-        setTickets([...sessionTickets, ...INITIAL_FALLBACK_TICKETS]);
+        setTickets(INITIAL_FALLBACK_TICKETS);
       }
     } catch (err) {
       console.warn("Using fallback queue items:", err);

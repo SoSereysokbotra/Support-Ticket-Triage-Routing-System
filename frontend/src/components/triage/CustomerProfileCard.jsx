@@ -5,7 +5,13 @@ import { Alert } from '../common/Alert';
 import { EmptyState } from '../common/EmptyState';
 import { User } from 'lucide-react';
 
-export const CustomerProfileCard = ({ customerId, features }) => {
+export const CustomerProfileCard = ({
+  customerId,
+  features,
+  targetSlaHours,
+  priorityLevel,
+  routingReason,
+}) => {
   if (!features) {
     return (
       <Card title="Customer">
@@ -51,9 +57,15 @@ export const CustomerProfileCard = ({ customerId, features }) => {
         </dl>
 
         {is_vip && (
-          <Alert variant="warning">VIP escalation applies: priority raised and SLA reduced to 2 hours.</Alert>
+          <Alert variant="warning">
+            {routingReason ||
+              `VIP escalation active: priority ${priorityLevel ? `set to ${priorityLevel}` : 'escalated'} with target SLA ${
+                targetSlaHours ? `of ${targetSlaHours}h` : 'expedited'
+              }.`}
+          </Alert>
         )}
       </div>
     </Card>
   );
 };
+
