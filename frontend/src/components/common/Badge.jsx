@@ -1,16 +1,20 @@
 import React from 'react';
 import clsx from 'clsx';
 
-const TONES = {
-  neutral: 'bg-slate-100 text-slate-700 ring-slate-200',
-  blue: 'bg-blue-50 text-blue-700 ring-blue-200',
-  green: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  amber: 'bg-amber-50 text-amber-800 ring-amber-200',
-  red: 'bg-red-50 text-red-700 ring-red-200',
-  purple: 'bg-violet-50 text-violet-700 ring-violet-200',
+// A badge is a square mono tag with a small colour swatch — the colour is
+// carried by the swatch, never by a tinted background.
+const SWATCHES = {
+  neutral: 'bg-rule-strong',
+  ink: 'bg-ink',
+  blue: 'bg-cat-software',
+  green: 'bg-ok',
+  amber: 'bg-warn',
+  red: 'bg-bad',
+  purple: 'bg-cat-network',
+  accent: 'bg-accent',
 };
 
-// Domain values map onto the six tones above so callers can pass
+// Domain values map onto the swatch tones above so callers can pass
 // a category / priority string straight through as `variant`.
 const ALIASES = {
   Hardware: 'amber',
@@ -18,32 +22,40 @@ const ALIASES = {
   Network: 'purple',
   'Access & Security': 'red',
   'Billing & Admin': 'green',
+  Other: 'neutral',
   Low: 'neutral',
-  Medium: 'blue',
+  Medium: 'ink',
   High: 'amber',
   Critical: 'red',
-  VIP: 'amber',
+  VIP: 'accent',
+};
+
+// Values that render as a solid inverted tag instead of swatch + text.
+const SOLID = {
+  Critical: 'border-bad bg-bad text-white',
+  VIP: 'border-accent bg-accent text-white',
 };
 
 const SIZES = {
-  sm: 'px-1.5 py-0.5 text-[11px]',
-  md: 'px-2 py-0.5 text-xs',
-  lg: 'px-2.5 py-1 text-sm',
+  sm: 'h-[22px] px-1.5 text-xs',
+  md: 'h-6 px-2 text-[13px]',
+  lg: 'h-7 px-2.5 text-sm',
 };
 
-export const Badge = ({ label, variant = 'neutral', size = 'md', dot = false, className = '' }) => {
-  const tone = TONES[variant] ? variant : ALIASES[variant] || 'neutral';
+export const Badge = ({ label, variant = 'neutral', size = 'md', className = '' }) => {
+  const tone = SWATCHES[variant] ? variant : ALIASES[variant] || 'neutral';
+  const solid = SOLID[variant];
 
   return (
     <span
       className={clsx(
-        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-md font-medium ring-1 ring-inset',
-        TONES[tone],
+        'inline-flex items-center gap-1.5 whitespace-nowrap border font-medium',
+        solid || 'border-rule bg-surface text-ink',
         SIZES[size],
         className
       )}
     >
-      {dot && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
+      {!solid && <span className={clsx('h-2 w-2 shrink-0', SWATCHES[tone])} aria-hidden="true" />}
       {label}
     </span>
   );

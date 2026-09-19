@@ -58,27 +58,27 @@ export const BatchTriageModal = ({ isOpen, onClose, onBatchSuccess }) => {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="batch-title"
       onClick={onClose}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-lg border border-slate-200 bg-white shadow-xl"
+        className="flex max-h-[90vh] w-full max-w-3xl flex-col border border-ink bg-surface"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+        <header className="flex items-start justify-between gap-4 border-b border-rule px-5 py-4">
           <div>
-            <h3 id="batch-title" className="text-sm font-semibold text-slate-900">
+            <h3 id="batch-title" className="text-[15px] font-semibold text-ink">
               Batch triage
             </h3>
-            <p className="mt-0.5 text-xs text-slate-500">Paste a JSON array of tickets to classify them together.</p>
+            <p className="mt-1 text-[13px] text-muted">Paste a JSON array of tickets to classify them together.</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            className="flex h-7 w-7 shrink-0 items-center justify-center border border-transparent text-muted transition-colors hover:border-ink hover:text-ink"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
@@ -90,7 +90,7 @@ export const BatchTriageModal = ({ isOpen, onClose, onBatchSuccess }) => {
             rows={10}
             value={jsonInput}
             onChange={(e) => setJsonInput(e.target.value)}
-            className="input font-mono text-xs leading-relaxed"
+            className="input font-mono text-[13px]"
             spellCheck={false}
             aria-label="Tickets JSON"
           />
@@ -99,34 +99,32 @@ export const BatchTriageModal = ({ isOpen, onClose, onBatchSuccess }) => {
 
           {results && (
             <div>
-              <div className="mb-2 text-xs font-medium text-slate-700">
-                {results.total_processed} tickets processed
-              </div>
-              <div className="max-h-56 overflow-auto rounded-md border border-slate-200">
-                <table className="w-full text-left text-xs">
-                  <thead className="sticky top-0 bg-slate-50 text-slate-500">
+              <div className="eyebrow mb-2">{results.total_processed} tickets processed</div>
+              <div className="max-h-56 overflow-auto border border-rule">
+                <table className="w-full text-left text-sm">
+                  <thead className="sticky top-0 border-b border-ink bg-surface">
                     <tr>
-                      <th className="px-3 py-2 font-medium">Category</th>
-                      <th className="px-3 py-2 font-medium">Confidence</th>
-                      <th className="px-3 py-2 font-medium">Priority</th>
-                      <th className="px-3 py-2 font-medium">SLA</th>
-                      <th className="px-3 py-2 font-medium">Team</th>
+                      <th className="th px-3">Category</th>
+                      <th className="th px-3">Confidence</th>
+                      <th className="th px-3">Priority</th>
+                      <th className="th px-3">SLA</th>
+                      <th className="th px-3">Team</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-rule">
                     {results.predictions.map((p, idx) => (
                       <tr key={idx}>
                         <td className="px-3 py-2">
                           <Badge label={p.predicted_category} variant={p.predicted_category} size="sm" />
                         </td>
-                        <td className="px-3 py-2 font-mono tabular-nums text-slate-700">
+                        <td className="px-3 py-2 font-mono tabular-nums text-ink-2">
                           {Math.round(p.confidence * 100)}%
                         </td>
                         <td className="px-3 py-2">
                           <Badge label={p.priority_level} variant={p.priority_level} size="sm" />
                         </td>
-                        <td className="px-3 py-2 font-mono tabular-nums text-slate-700">{p.target_sla_hours}h</td>
-                        <td className="px-3 py-2 text-slate-700">{p.assigned_team}</td>
+                        <td className="px-3 py-2 font-mono tabular-nums text-ink-2">{p.target_sla_hours}h</td>
+                        <td className="px-3 py-2 text-ink-2">{p.assigned_team}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -136,7 +134,7 @@ export const BatchTriageModal = ({ isOpen, onClose, onBatchSuccess }) => {
           )}
         </div>
 
-        <footer className="flex items-center justify-between border-t border-slate-200 px-5 py-4">
+        <footer className="flex items-center justify-between border-t border-rule px-5 py-4">
           <Button variant="ghost" size="sm" onClick={() => setJsonInput(DEFAULT_BATCH_JSON)}>
             Reset example
           </Button>

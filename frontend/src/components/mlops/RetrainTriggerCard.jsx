@@ -43,12 +43,13 @@ export const RetrainTriggerCard = () => {
 
   return (
     <Card
+      index="02"
       title="Automated retraining"
       description="Prefect pipeline with data validation and a Macro-F1 quality gate"
-      action={<Badge label={badge.label} variant={badge.variant} dot={isRunning} />}
+      action={<Badge label={badge.label} variant={badge.variant} />}
     >
       <div className="space-y-4">
-        <p className="text-sm text-slate-600">
+        <p className="text-sm leading-relaxed text-ink-2">
           Simulates out-of-distribution traffic, then runs the full retraining pipeline end to end.
         </p>
 
@@ -57,15 +58,15 @@ export const RetrainTriggerCard = () => {
         </Button>
 
         {logs.length > 0 && (
-          <ol className="max-h-56 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-slate-50 p-3 font-mono text-[11px] leading-relaxed text-slate-700">
+          <ol className="max-h-56 space-y-1 overflow-y-auto bg-ink p-4 font-mono text-[13px] leading-relaxed text-paper">
             {logs.map((log, idx) => (
-              <li key={idx} className="flex gap-2">
-                <span className="shrink-0 text-slate-400">{new Date().toLocaleTimeString()}</span>
+              <li key={idx} className="flex gap-3">
+                <span className="shrink-0 tabular-nums text-paper/40">{new Date().toLocaleTimeString('en-GB')}</span>
                 <span>{log}</span>
               </li>
             ))}
             {status === 'complete' && (
-              <li className="flex items-center gap-1.5 pt-1 font-medium text-emerald-700">
+              <li className="flex items-center gap-1.5 pt-1.5 font-medium text-live">
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 Retraining cycle finished
               </li>

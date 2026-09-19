@@ -10,38 +10,40 @@ export const ProbabilityBreakdown = ({ probabilities = {}, predictedCategory }) 
   }
 
   return (
-    <Card title="Category probabilities" description={`${entries.length} classes`}>
-      <ul className="space-y-3">
-        {entries.map(([category, prob]) => {
+    <Card index="03" title="Category probabilities" description={`${entries.length} classes, ranked`}>
+      <ol className="space-y-3.5">
+        {entries.map(([category, prob], i) => {
           const percent = Math.round(prob * 100);
           const isTop = category === predictedCategory;
 
           return (
             <li key={category}>
-              <div className="mb-1 flex items-center justify-between text-xs">
-                <span className={clsx(isTop ? 'font-medium text-slate-900' : 'text-slate-600')}>{category}</span>
+              <div className="mb-1.5 flex items-baseline justify-between gap-3">
+                <div className="flex min-w-0 items-baseline gap-2.5">
+                  <span className="font-mono text-xs tabular-nums text-muted">{String(i + 1).padStart(2, '0')}</span>
+                  <span className={clsx('truncate text-sm', isTop ? 'font-medium text-ink' : 'text-ink-2')}>
+                    {category}
+                  </span>
+                </div>
                 <span
                   className={clsx(
-                    'font-mono tabular-nums',
-                    isTop ? 'font-medium text-slate-900' : 'text-slate-500'
+                    'font-mono text-xs tabular-nums',
+                    isTop ? 'font-medium text-ink' : 'text-muted'
                   )}
                 >
                   {percent}%
                 </span>
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+              <div className="h-1 w-full bg-rule">
                 <div
-                  className={clsx(
-                    'h-full rounded-full transition-[width] duration-500',
-                    isTop ? 'bg-blue-600' : 'bg-slate-300'
-                  )}
+                  className={clsx('h-full transition-[width] duration-500', isTop ? 'bg-ink' : 'bg-rule-strong')}
                   style={{ width: `${Math.max(percent, 1)}%` }}
                 />
               </div>
             </li>
           );
         })}
-      </ul>
+      </ol>
     </Card>
   );
 };

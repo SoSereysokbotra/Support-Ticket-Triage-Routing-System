@@ -100,8 +100,8 @@ export const TriagePortal = ({ onTicketSubmitted }) => {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <div className="space-y-5">
           <LiveTicketForm
             title={title}
             setTitle={setTitle}
@@ -124,7 +124,7 @@ export const TriagePortal = ({ onTicketSubmitted }) => {
           />
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-5">
           <PredictionResultCard result={predictionResult} isLoading={isLoading && !predictionResult} />
           <ProbabilityBreakdown
             probabilities={predictionResult?.probabilities}

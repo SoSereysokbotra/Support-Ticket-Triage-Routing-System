@@ -1,5 +1,5 @@
 import React from 'react';
-import { StatCard } from '../common/StatCard';
+import { StatCard, StatGrid } from '../common/StatCard';
 import { Activity, Zap, Target, UserCheck } from 'lucide-react';
 
 export const MLOpsKpiCards = ({ metrics }) => {
@@ -10,7 +10,7 @@ export const MLOpsKpiCards = ({ metrics }) => {
   const lowConfPercent = total > 0 ? ((lowConf / total) * 100).toFixed(1) : '0.0';
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <StatGrid>
       <StatCard label="Inferences" value={total} hint="Logged predictions" icon={Activity} />
       <StatCard label="Avg. latency" value={`${avgLatency} ms`} hint="Per prediction" icon={Zap} />
       <StatCard label="Mean confidence" value={`${meanConf}%`} hint="Routing threshold 65%" icon={Target} />
@@ -20,6 +20,6 @@ export const MLOpsKpiCards = ({ metrics }) => {
         hint={`${lowConf} below threshold`}
         icon={UserCheck}
       />
-    </div>
+    </StatGrid>
   );
 };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { StatCard } from '../common/StatCard';
+import { StatCard, StatGrid } from '../common/StatCard';
 import { ListOrdered, CheckCircle2, AlertTriangle, Star } from 'lucide-react';
 
 export const QueueStatsHeader = ({ tickets = [] }) => {
@@ -12,7 +12,7 @@ export const QueueStatsHeader = ({ tickets = [] }) => {
   ).length;
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <StatGrid>
       <StatCard label="In queue" value={total} hint="Open tickets" icon={ListOrdered} />
       <StatCard
         label="Auto-routed"
@@ -22,6 +22,6 @@ export const QueueStatsHeader = ({ tickets = [] }) => {
       />
       <StatCard label="High / critical" value={urgentCount} hint="Expedited SLA" icon={AlertTriangle} />
       <StatCard label="VIP customers" value={vipCount} hint="2-hour SLA" icon={Star} />
-    </div>
+    </StatGrid>
   );
 };

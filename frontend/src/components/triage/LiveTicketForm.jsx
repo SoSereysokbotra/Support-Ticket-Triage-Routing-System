@@ -52,11 +52,12 @@ export const LiveTicketForm = ({
 
   return (
     <Card
+      index="01"
       title="New ticket"
       action={
         isLoading && (
-          <span className="flex items-center gap-1.5 text-xs text-slate-500">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <span className="flex items-center gap-1.5 text-xs text-muted">
+            <Loader2 className="h-3 w-3 animate-spin" />
             Classifying
           </span>
         )
@@ -66,13 +67,13 @@ export const LiveTicketForm = ({
         {/* Examples */}
         <div>
           <span className="label">Examples</span>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {SAMPLE_TICKETS.map((sample) => (
               <button
                 key={sample.title}
                 type="button"
                 onClick={() => loadSample(sample)}
-                className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900"
+                className="border border-rule bg-paper px-2.5 py-1 text-[13px] text-ink-2 transition-colors hover:border-ink hover:text-ink"
               >
                 {sample.title}
               </button>
@@ -95,11 +96,11 @@ export const LiveTicketForm = ({
         </div>
 
         <div>
-          <div className="mb-1.5 flex items-center justify-between">
-            <label htmlFor="ticket-text" className="text-xs font-medium text-slate-700">
+          <div className="mb-1.5 flex items-baseline justify-between">
+            <label htmlFor="ticket-text" className="eyebrow">
               Description
             </label>
-            <span className="font-mono text-[11px] tabular-nums text-slate-400">{text.length} chars</span>
+            <span className="font-mono text-xs tabular-nums text-muted">{text.length} chars</span>
           </div>
           <textarea
             id="ticket-text"
@@ -107,7 +108,7 @@ export const LiveTicketForm = ({
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Symptoms, error messages, affected systems…"
-            className="input resize-y leading-relaxed"
+            className="input resize-y"
           />
         </div>
 
@@ -136,7 +137,7 @@ export const LiveTicketForm = ({
 
           <div>
             <label htmlFor="ticket-urgency" className="label">
-              Urgency hint <span className="font-normal text-slate-400">(optional)</span>
+              Urgency hint <span className="font-normal text-muted">(optional)</span>
             </label>
             <select
               id="ticket-urgency"
@@ -153,7 +154,7 @@ export const LiveTicketForm = ({
           </div>
         </div>
 
-        <div className="flex items-center justify-between border-t border-slate-200 pt-4">
+        <div className="flex items-center justify-between border-t border-rule pt-4">
           <Button variant="ghost" size="sm" onClick={onReset}>
             Clear
           </Button>

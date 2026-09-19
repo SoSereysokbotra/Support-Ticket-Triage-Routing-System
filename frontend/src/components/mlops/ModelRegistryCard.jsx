@@ -7,16 +7,16 @@ import { promoteModelVersion, rollbackModelVersion } from '../../services/api';
 import { RotateCcw, ArrowUpCircle } from 'lucide-react';
 
 const VersionTile = ({ name, alias, aliasTone, rows }) => (
-  <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+  <div className="bg-paper p-4">
     <div className="flex items-center justify-between gap-2">
-      <span className="font-mono text-sm font-medium text-slate-900">{name}</span>
-      <Badge label={alias} variant={aliasTone} size="sm" dot />
+      <span className="font-mono text-sm font-medium text-ink">{name}</span>
+      <Badge label={alias} variant={aliasTone} size="sm" />
     </div>
-    <dl className="mt-3 space-y-1 text-xs">
+    <dl className="mt-3 divide-y divide-rule">
       {rows.map(([k, v]) => (
-        <div key={k} className="flex items-center justify-between">
-          <dt className="text-slate-500">{k}</dt>
-          <dd className="font-mono text-slate-800">{v}</dd>
+        <div key={k} className="flex items-center justify-between py-1.5 text-xs">
+          <dt className="text-xs text-muted">{k}</dt>
+          <dd className="font-mono text-ink">{v}</dd>
         </div>
       ))}
     </dl>
@@ -60,11 +60,11 @@ export const ModelRegistryCard = ({ onActionSuccess }) => {
   };
 
   return (
-    <Card title="Model registry" description="MLflow aliases · changes hot-reload without downtime">
+    <Card index="03" title="Model registry" description="MLflow aliases · changes hot-reload without downtime">
       <div className="space-y-5">
         {toast && <Alert variant={toast.variant}>{toast.message}</Alert>}
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-px border border-rule bg-rule sm:grid-cols-2">
           <VersionTile
             name="distilbert-classifier v1"
             alias="production"
@@ -85,7 +85,7 @@ export const ModelRegistryCard = ({ onActionSuccess }) => {
           />
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-3 border-t border-rule pt-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="sm:w-56">
             <label htmlFor="registry-version" className="label">
               Target version

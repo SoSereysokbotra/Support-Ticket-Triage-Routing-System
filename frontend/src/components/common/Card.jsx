@@ -2,10 +2,12 @@ import React from 'react';
 import clsx from 'clsx';
 
 /**
- * Basic surface. Pass `title` (and optionally `description` / `action`)
- * to get a consistent header; omit them for a plain padded box.
+ * Basic surface. Pass `title` (and optionally `index`, `description`,
+ * `action`) to get a consistent header; omit them for a plain padded box.
+ * `index` is a short ordinal like "01" printed before the title.
  */
 export const Card = ({
+  index,
   title,
   description,
   action,
@@ -17,12 +19,17 @@ export const Card = ({
   const hasHeader = title || action;
 
   return (
-    <section className={clsx('rounded-lg border border-slate-200 bg-white shadow-sm', className)}>
+    <section className={clsx('border border-rule bg-surface', className)}>
       {hasHeader && (
-        <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
+        <header className="flex items-start justify-between gap-4 border-b border-rule px-5 py-3.5">
           <div className="min-w-0">
-            {title && <h3 className="text-sm font-semibold text-slate-900">{title}</h3>}
-            {description && <p className="mt-0.5 text-xs text-slate-500">{description}</p>}
+            {title && (
+              <h3 className="text-[15px] font-semibold text-ink">
+                {index && <span className="mr-2 text-muted">{index}</span>}
+                {title}
+              </h3>
+            )}
+            {description && <p className="mt-1 text-[13px] text-muted">{description}</p>}
           </div>
           {action && <div className="shrink-0">{action}</div>}
         </header>

@@ -2,17 +2,11 @@ import React, { useState } from 'react';
 import { Card } from '../common/Card';
 import { Button } from '../common/Button';
 import { Badge } from '../common/Badge';
+import { Field } from '../common/Field';
 import { Alert } from '../common/Alert';
 import { EmptyState } from '../common/EmptyState';
 import { analyzeDrift } from '../../services/api';
 import { Play, Radar } from 'lucide-react';
-
-const Stat = ({ label, children }) => (
-  <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
-    <div className="text-[11px] text-slate-500">{label}</div>
-    <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">{children}</div>
-  </div>
-);
 
 export const DriftAnalysisCard = ({ onDriftDetected }) => {
   const [windowSize, setWindowSize] = useState(200);
@@ -38,6 +32,7 @@ export const DriftAnalysisCard = ({ onDriftDetected }) => {
 
   return (
     <Card
+      index="01"
       title="Drift analysis"
       description="Evidently AI · KS test and PSI against the training baseline"
       action={
@@ -45,7 +40,6 @@ export const DriftAnalysisCard = ({ onDriftDetected }) => {
           <Badge
             label={driftResult.drift_detected ? 'Drift detected' : 'No drift'}
             variant={driftResult.drift_detected ? 'red' : 'green'}
-            dot
           />
         )
       }
@@ -54,7 +48,10 @@ export const DriftAnalysisCard = ({ onDriftDetected }) => {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
           <div className="flex-1">
             <label htmlFor="drift-window" className="label">
-              Window: <span className="font-mono tabular-nums text-slate-900">{windowSize}</span> recent requests
+              Window
+              <span className="ml-2 font-normal text-ink">
+                <span className="tabular-nums">{windowSize}</span> recent requests
+              </span>
             </label>
             <input
               id="drift-window"
@@ -64,7 +61,7 @@ export const DriftAnalysisCard = ({ onDriftDetected }) => {
               step="20"
               value={windowSize}
               onChange={(e) => setWindowSize(Number(e.target.value))}
-              className="w-full accent-blue-600"
+              className="w-full"
             />
           </div>
           <Button icon={Play} onClick={handleRunAnalysis} isLoading={isLoading}>
@@ -76,35 +73,39 @@ export const DriftAnalysisCard = ({ onDriftDetected }) => {
 
         {driftResult ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <Stat label="Drift score">{(driftResult.drift_score * 100).toFixed(1)}%</Stat>
-              <Stat label="Drifted features">{driftResult.drifted_features?.length ?? 0}</Stat>
-              <Stat label="Decision">
-                <span className={driftResult.drift_detected ? 'text-red-700' : 'text-emerald-700'}>
+            <div className="grid grid-cols-1 gap-px border border-rule bg-rule sm:grid-cols-3">
+              <Field label="Drift score" size="lg" className="border-0">
+                <span className="tabular-nums">{(driftResult.drift_score * 100).toFixed(1)}%</span>
+              </Field>
+              <Field label="Drifted features" size="lg" className="border-0">
+                <span className="tabular-nums">{driftResult.drifted_features?.length ?? 0}</span>
+              </Field>
+              <Field label="Decision" size="lg" className="border-0">
+                <span className={driftResult.drift_detected ? 'text-bad' : 'text-ok'}>
                   {driftResult.drift_detected ? 'Retrain' : 'Healthy'}
                 </span>
-              </Stat>
+              </Field>
             </div>
 
             {driftResult.feature_drift && (
-              <div className="overflow-hidden rounded-md border border-slate-200">
-                <table className="w-full text-left text-xs">
-                  <thead className="border-b border-slate-200 bg-slate-50 text-slate-500">
+              <div className="overflow-x-auto border border-rule">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-ink">
                     <tr>
-                      <th className="px-3 py-2 font-medium">Feature</th>
-                      <th className="px-3 py-2 font-medium">p-value</th>
-                      <th className="px-3 py-2 font-medium">Distance</th>
-                      <th className="px-3 py-2 font-medium">Status</th>
+                      <th className="th px-3">Feature</th>
+                      <th className="th px-3">p-value</th>
+                      <th className="th px-3">Distance</th>
+                      <th className="th px-3">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-rule">
                     {Object.entries(driftResult.feature_drift).map(([feat, stat]) => (
                       <tr key={feat}>
-                        <td className="px-3 py-2 font-mono text-slate-800">{feat}</td>
-                        <td className="px-3 py-2 font-mono tabular-nums text-slate-700">
+                        <td className="px-3 py-2 font-mono text-ink">{feat}</td>
+                        <td className="px-3 py-2 font-mono tabular-nums text-ink-2">
                           {stat.p_value ? stat.p_value.toFixed(4) : '0.0421'}
                         </td>
-                        <td className="px-3 py-2 font-mono tabular-nums text-slate-700">
+                        <td className="px-3 py-2 font-mono tabular-nums text-ink-2">
                           {stat.drift_score ? stat.drift_score.toFixed(4) : '0.1240'}
                         </td>
                         <td className="px-3 py-2">

@@ -3,14 +3,15 @@ import clsx from 'clsx';
 import { Loader2 } from 'lucide-react';
 
 const VARIANTS = {
-  primary: 'bg-blue-600 text-white shadow-sm hover:bg-blue-700',
-  secondary: 'border border-slate-300 bg-white text-slate-700 shadow-sm hover:bg-slate-50',
-  ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
-  danger: 'bg-red-600 text-white shadow-sm hover:bg-red-700',
+  primary: 'border border-ink bg-ink text-paper hover:border-ink-hover hover:bg-ink-hover',
+  // Outlined; inverts to solid ink on hover.
+  secondary: 'border border-ink bg-transparent text-ink hover:bg-ink hover:text-paper',
+  ghost: 'border border-transparent text-ink-2 hover:border-rule-strong hover:text-ink',
+  danger: 'border border-bad bg-bad text-white hover:bg-[#9A1D13]',
 };
 
 const SIZES = {
-  sm: 'h-8 px-3 text-xs gap-1.5',
+  sm: 'h-8 px-3 text-[13px] gap-1.5',
   md: 'h-9 px-4 text-sm gap-2',
   lg: 'h-11 px-5 text-sm gap-2',
 };
@@ -29,8 +30,8 @@ export const Button = ({
     type="button"
     disabled={disabled || isLoading}
     className={clsx(
-      'inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors',
-      'disabled:pointer-events-none disabled:opacity-50',
+      'inline-flex items-center justify-center whitespace-nowrap font-medium tracking-[0.01em] transition-colors',
+      'disabled:pointer-events-none disabled:opacity-40',
       VARIANTS[variant],
       SIZES[size],
       className
@@ -38,9 +39,9 @@ export const Button = ({
     {...props}
   >
     {isLoading ? (
-      <Loader2 className="h-4 w-4 animate-spin" />
+      <Loader2 className="h-3.5 w-3.5 animate-spin" />
     ) : Icon ? (
-      <Icon className="h-4 w-4" />
+      <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
     ) : null}
     {children}
   </button>

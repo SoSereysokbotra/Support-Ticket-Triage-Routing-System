@@ -48,12 +48,12 @@ export const MLOpsControl = () => {
 
       <MLOpsKpiCards metrics={metrics} />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <div className="space-y-5">
           <DriftAnalysisCard />
           <RetrainTriggerCard />
         </div>
-        <div className="space-y-6">
+        <div className="space-y-5">
           <ModelRegistryCard onActionSuccess={fetchMetrics} />
         </div>
       </div>

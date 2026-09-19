@@ -19,9 +19,12 @@ export const QueueFilterBar = ({
     searchQuery || categoryFilter !== 'ALL' || priorityFilter !== 'ALL' || teamFilter !== 'ALL' || vipOnly;
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm md:flex-row md:items-center">
+    <div className="flex flex-col gap-3 border border-rule bg-surface p-3 md:flex-row md:items-center">
       <div className="relative flex-1">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Search
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+          strokeWidth={1.75}
+        />
         <input
           type="search"
           value={searchQuery}
@@ -79,13 +82,13 @@ export const QueueFilterBar = ({
           onClick={() => setVipOnly(!vipOnly)}
           aria-pressed={vipOnly}
           className={clsx(
-            'inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-sm font-medium transition-colors',
+            'inline-flex h-[38px] items-center gap-1.5 border px-3 text-[13px] font-semibold transition-colors',
             vipOnly
-              ? 'border-amber-300 bg-amber-50 text-amber-800'
-              : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+              ? 'border-ink bg-ink text-paper'
+              : 'border-rule-strong bg-surface text-ink-2 hover:border-ink hover:text-ink'
           )}
         >
-          <Star className="h-3.5 w-3.5" />
+          <Star className="h-3.5 w-3.5" strokeWidth={1.75} />
           VIP
         </button>
 
@@ -93,9 +96,9 @@ export const QueueFilterBar = ({
           <button
             type="button"
             onClick={onReset}
-            className="inline-flex h-9 items-center gap-1.5 rounded-md px-2.5 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+            className="inline-flex h-[38px] items-center gap-1.5 px-2.5 text-xs text-muted transition-colors hover:text-ink"
           >
-            <RotateCcw className="h-3.5 w-3.5" />
+            <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.75} />
             Reset
           </button>
         )}

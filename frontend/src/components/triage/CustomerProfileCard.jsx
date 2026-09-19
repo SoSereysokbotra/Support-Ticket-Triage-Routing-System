@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card } from '../common/Card';
 import { Badge } from '../common/Badge';
+import { Field } from '../common/Field';
 import { Alert } from '../common/Alert';
 import { EmptyState } from '../common/EmptyState';
 import { User } from 'lucide-react';
@@ -14,7 +15,7 @@ export const CustomerProfileCard = ({
 }) => {
   if (!features) {
     return (
-      <Card title="Customer">
+      <Card index="04" title="Customer">
         <EmptyState
           icon={User}
           title="No customer features"
@@ -29,31 +30,28 @@ export const CustomerProfileCard = ({
 
   return (
     <Card
+      index="04"
       title="Customer"
       description="Online features from Feast"
       action={
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {is_vip && <Badge label="VIP" variant="VIP" size="sm" />}
           <Badge label={customer_tier || 'Standard'} size="sm" />
         </div>
       }
     >
       <div className="space-y-4">
-        <div className="font-mono text-sm font-medium text-slate-900">{customerId}</div>
+        <div className="font-mono text-sm font-medium text-ink">{customerId}</div>
 
-        <dl className="grid grid-cols-2 gap-3">
-          <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
-            <dt className="text-[11px] text-slate-500">Past tickets</dt>
-            <dd className="mt-1 font-mono text-sm font-medium tabular-nums text-slate-900">
-              {past_ticket_count ?? 0}
-            </dd>
-          </div>
-          <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
-            <dt className="text-[11px] text-slate-500">Avg. resolution</dt>
-            <dd className="mt-1 font-mono text-sm font-medium tabular-nums text-slate-900">
+        <dl className="grid grid-cols-2 gap-px border border-rule bg-rule">
+          <Field label="Past tickets" size="lg" className="border-0">
+            <span className="tabular-nums">{past_ticket_count ?? 0}</span>
+          </Field>
+          <Field label="Avg. resolution" size="lg" className="border-0">
+            <span className="tabular-nums">
               {avg_resolution_time_hours ? `${avg_resolution_time_hours}h` : '—'}
-            </dd>
-          </div>
+            </span>
+          </Field>
         </dl>
 
         {is_vip && (
@@ -68,4 +66,3 @@ export const CustomerProfileCard = ({
     </Card>
   );
 };
-
