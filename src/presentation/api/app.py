@@ -12,6 +12,7 @@ from src.infrastructure.data.dataset_loader import DatasetLoader
 from src.infrastructure.features.feast_store import FeastFeatureStoreAdapter
 from src.infrastructure.models.baseline_classifier import BaselineTfidfClassifier
 from src.infrastructure.models.distilbert_classifier import DistilBertTicketClassifier
+from src.infrastructure.models.onnx_distilbert_classifier import OnnxDistilBertClassifier
 from src.infrastructure.monitoring.metrics import (
     HTTP_REQUEST_DURATION_SECONDS,
     HTTP_REQUESTS_TOTAL,
@@ -62,10 +63,20 @@ def create_app(model_override=None, registry_override=None, logger_override=None
             except Exception as e:
                 print(f"[Lifespan] MLflow production model load skipped/failed: {e}")
 
-            # 2. Fallback to local DistilBERT checkpoint if present
+            # 2. Check for local ONNX DistilBERT (High-Performance Path) or PyTorch DistilBERT
             if not classifier:
                 distilbert_path = project_root / "models" / "distilbert_v0"
-                if distilbert_path.exists() and (distilbert_path / "config.json").exists():
+                if (distilbert_path / "model.onnx").exists():
+                    try:
+                        print(f"[Lifespan] Loading local ONNX DistilBERT from {distilbert_path / 'model.onnx'} (Accelerated)...")
+                        classifier = OnnxDistilBertClassifier(
+                            model_path_or_dir=distilbert_path,
+                            model_version="distilbert-onnx-v0",
+                        )
+                    except Exception as e:
+                        print(f"[Lifespan] Failed loading ONNX model, falling back to PyTorch: {e}")
+
+                if not classifier and distilbert_path.exists() and (distilbert_path / "config.json").exists():
                     print(f"[Lifespan] Loading local DistilBERT from {distilbert_path}...")
                     classifier = DistilBertTicketClassifier(
                         model_path_or_name=distilbert_path,

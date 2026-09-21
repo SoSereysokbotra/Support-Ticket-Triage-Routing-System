@@ -235,7 +235,18 @@ class MLflowModelRegistry:
         local_model_path = self.client.download_artifacts(mv.run_id, "model")
         version_label = f"{model_name}:{mv.version}@{alias}" if not version else f"{model_name}:{version}"
 
-        # Check if DistilBERT or Baseline TFIDF
+        # Check if ONNX DistilBERT, PyTorch DistilBERT, or Baseline TFIDF
+        if (Path(local_model_path) / "model.onnx").exists():
+            try:
+                from src.infrastructure.models.onnx_distilbert_classifier import OnnxDistilBertClassifier
+
+                return OnnxDistilBertClassifier(
+                    model_path_or_dir=local_model_path,
+                    model_version=f"{version_label}-onnx",
+                )
+            except Exception:
+                pass
+
         if (Path(local_model_path) / "config.json").exists():
             try:
                 return DistilBertTicketClassifier(

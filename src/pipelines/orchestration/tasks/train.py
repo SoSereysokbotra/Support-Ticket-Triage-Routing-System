@@ -39,6 +39,16 @@ def train_model_task(
         random_state=random_state,
     )
 
+    # Auto-export candidate to ONNX for ultra-low latency serving
+    try:
+        from src.pipelines.export.export_onnx import export_distilbert_to_onnx
+
+        print(f"[TrainTask] Auto-exporting candidate model to ONNX: {output_dir / 'model.onnx'}...")
+        export_distilbert_to_onnx(model_dir=output_dir)
+        print("[TrainTask] Candidate ONNX export succeeded.")
+    except Exception as e:
+        print(f"[TrainTask] Candidate ONNX export skipped/failed: {e}")
+
     return {
         "model_dir": output_dir,
         "test_df": test_df,

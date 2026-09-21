@@ -38,6 +38,11 @@ plotly==5.24.1
 psycopg2-binary==2.9.10
 redis==5.2.1
 
+# Inference Acceleration (ONNX Runtime)
+onnx==1.17.0
+onnxruntime==1.20.1
+onnxscript==0.7.2
+
 # Testing & Utilities
 pytest==9.1.1
 pytest-asyncio==1.4.0
