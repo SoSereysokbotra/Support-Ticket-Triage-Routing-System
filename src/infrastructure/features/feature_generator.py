@@ -1,3 +1,4 @@
+import os
 import random
 import sys
 from datetime import datetime, timedelta, timezone
@@ -85,21 +86,41 @@ def bootstrap_feast_store() -> None:
     # 1. Generate Parquet Data
     generate_customer_parquet(parquet_path)
 
-    # 2. Initialize FeatureStore
-    store = FeatureStore(repo_path=str(features_dir))
+    # 2. Initialize FeatureStore (Redis if configured, SQLite fallback)
+    redis_host = os.getenv("REDIS_HOST")
+    redis_port = int(os.getenv("REDIS_PORT", "6379")) if os.getenv("REDIS_PORT") else 6379
+
+    if redis_host:
+        from feast.infra.online_stores.redis import RedisOnlineStoreConfig
+        from feast.repo_config import RepoConfig
+
+        repo_config = RepoConfig(
+            project="ticket_triage_features",
+            registry=str(features_dir / "data" / "registry.pb"),
+            provider="local",
+            online_store=RedisOnlineStoreConfig(connection_string=f"{redis_host}:{redis_port}"),
+            entity_key_serialization_version=3,
+        )
+        store = FeatureStore(config=repo_config)
+        store_type = f"Redis ({redis_host}:{redis_port})"
+    else:
+        store = FeatureStore(repo_path=str(features_dir))
+        store_type = "SQLite"
 
     # 3. Apply feature definitions
     print("Applying Feast definitions to registry...")
     from features.feature_definitions import customer, customer_profile_features
+
     store.apply([customer, customer_profile_features])
     print("Feast schema applied successfully.")
 
-    # 4. Materialize into SQLite Online Store
+    # 4. Materialize into Online Store
     end_date = datetime.now(timezone.utc) + timedelta(days=1)
     start_date = end_date - timedelta(days=180)
-    print(f"Materializing features from {start_date.date()} to {end_date.date()} into SQLite online store...")
+    print(f"Materializing features from {start_date.date()} to {end_date.date()} into {store_type} online store...")
     store.materialize(start_date=start_date, end_date=end_date)
     print("Materialization complete. Online store is ready for real-time lookups.")
+
 
 
 if __name__ == "__main__":

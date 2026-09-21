@@ -39,8 +39,15 @@ def create_app(model_override=None, registry_override=None, logger_override=None
         if logger_override:
             app.state.prediction_logger = logger_override
         elif not getattr(app.state, "prediction_logger", None):
-            prediction_logger = PredictionLogger(db_path=project_root / "data" / "monitoring" / "inference_logs.db")
+            import os
+
+            postgres_url = os.getenv("POSTGRES_DB_URL") or os.getenv("DATABASE_URL")
+            prediction_logger = PredictionLogger(
+                db_path=project_root / "data" / "monitoring" / "inference_logs.db",
+                db_url=postgres_url,
+            )
             app.state.prediction_logger = prediction_logger
+
 
         if model_override:
             classifier = model_override

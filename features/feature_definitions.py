@@ -1,5 +1,4 @@
 from datetime import timedelta
-from pathlib import Path
 
 from feast import Entity, FeatureView, Field, FileSource, ValueType
 from feast.types import Bool, Float32, Int64
@@ -13,9 +12,8 @@ customer = Entity(
 )
 
 # 2. Define File Data Source
-# Use relative path from the features/ directory or absolute
-features_dir = Path(__file__).resolve().parent
-parquet_path = (features_dir / "data" / "customer_features.parquet").as_posix()
+# Use relative path from the features/ directory for cross-platform portability
+parquet_path = "data/customer_features.parquet"
 
 customer_source = FileSource(
     name="customer_features_source",
@@ -23,6 +21,7 @@ customer_source = FileSource(
     timestamp_field="event_timestamp",
     created_timestamp_column="created_timestamp",
 )
+
 
 # 3. Define Batch Feature View (Single Source of Truth)
 customer_profile_features = FeatureView(

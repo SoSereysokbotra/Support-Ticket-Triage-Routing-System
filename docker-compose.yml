@@ -1,7 +1,45 @@
 services:
+  # ---------------------------------------------------------------------------
+  # Database & Caching Services (High-Concurrency Tier)
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: ticket-triage-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=ticket_triage
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./deploy/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ticket_triage"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: ticket-triage-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Application Services
+  # ---------------------------------------------------------------------------
   # 1. FastAPI Real-Time Inference & Routing Service
-  #    This is the only service that builds. The other two reuse the same image
-  #    so `docker compose up --build` produces one image, not three.
   api:
     build:
       context: .
@@ -11,8 +49,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - MLFLOW_TRACKING_URI=sqlite:///app/data/mlruns.db
-      - FEAST_USAGE=False
+      - POSTGRES_DB_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/ticket_triage
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - FEAST_USAGE=True
     volumes:
       - ./data:/app/data
       - ./models:/app/models
@@ -20,8 +61,12 @@ services:
     deploy:
       resources:
         limits:
-          # Two DistilBERT models + torch runtime; keep a runaway from taking the host
           memory: 3g
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   # 2. Streamlit MLOps Monitoring Dashboard
@@ -32,7 +77,8 @@ services:
     ports:
       - "8501:8501"
     environment:
-      - MLFLOW_TRACKING_URI=sqlite:///app/data/mlruns.db
+      - POSTGRES_DB_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/ticket_triage
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
     volumes:
       - ./data:/app/data
       - ./models:/app/models
@@ -41,7 +87,6 @@ services:
       resources:
         limits:
           memory: 1500m
-    # The image's HEALTHCHECK targets the API; override per service
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
       interval: 30s
@@ -50,15 +95,21 @@ services:
       start_period: 15s
     depends_on:
       - api
+      - postgres
     restart: unless-stopped
 
   # 3. MLflow Tracking & Model Registry Server
   mlflow:
     image: ticket-triage:latest
     container_name: ticket-triage-mlflow
-    # MLflow 3.x defaults to 4 uvicorn workers + a background job runner, each importing the
-    # full mlflow stack. One worker is plenty for a local tracking UI and keeps RAM ~500MB.
-    command: ["mlflow", "server", "--backend-store-uri", "sqlite:///app/data/mlruns.db", "--default-artifact-root", "/app/mlruns", "--host", "0.0.0.0", "--port", "5000", "--workers", "1"]
+    command: [
+      "mlflow", "server",
+      "--backend-store-uri", "postgresql+psycopg2://postgres:postgres@postgres:5432/mlflow",
+      "--default-artifact-root", "/app/mlruns",
+      "--host", "0.0.0.0",
+      "--port", "5000",
+      "--workers", "2"
+    ]
     environment:
       - MLFLOW_SERVER_ENABLE_JOB_EXECUTION=false
     ports:
@@ -77,13 +128,11 @@ services:
       retries: 3
       start_period: 15s
     depends_on:
-      - api
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   # 4. React Frontend (Vite build served by nginx)
-  #    The browser calls the API at http://localhost:8000 directly, so this
-  #    container only serves static files. For hot-reload during development
-  #    run `npm run dev` in ./frontend instead.
   frontend:
     build:
       context: ./frontend
@@ -101,3 +150,7 @@ services:
     depends_on:
       - api
     restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

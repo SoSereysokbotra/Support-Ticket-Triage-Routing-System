@@ -13,14 +13,15 @@
 5. [Phase C: Declarative GitOps with ArgoCD](#5-phase-c-declarative-gitops-with-argocd)
 6. [Phase D: Production Observability (Prometheus & Grafana)](#6-phase-d-production-observability-prometheus--grafana)
 7. [Phase E: Dynamic Horizontal Pod Autoscaling (HPA v2)](#7-phase-e-dynamic-horizontal-pod-autoscaling-hpa-v2)
-8. [Service Topology & Port Matrix](#8-service-topology--port-matrix)
-9. [Operator Runbook & Automation Cheat Sheet](#9-operator-runbook--automation-cheat-sheet)
+8. [Phase F: PostgreSQL & Redis Integration (Replacing SQLite)](#8-phase-f-postgresql--redis-integration-replacing-sqlite)
+9. [Service Topology & Port Matrix](#9-service-topology--port-matrix)
+10. [Operator Runbook & Automation Cheat Sheet](#10-operator-runbook--automation-cheat-sheet)
 
 ---
 
 ## 1. Platform Evolution Summary & Maturity Ladder
 
-The project was evolved from a local Python prototype into a **Level 5 Elastic Production ML Platform** adhering to the principle:
+The project was evolved from a local Python prototype into a **Level 6 Enterprise Scaled ML Platform** adhering to the principle:
 > **"First make the system correct. Then make it automated. Then make it observable. Then make it sophisticated."**
 
 ```text
@@ -32,6 +33,7 @@ The project was evolved from a local Python prototype into a **Level 5 Elastic P
   [✓] Phase C: Declarative GitOps Continuous Delivery (ArgoCD, Self-Healing)
   [✓] Phase D: Full Production Observability (Prometheus, Grafana, MLOps KPIs)
   [✓] Phase E: Dynamic Horizontal Pod Autoscaling (HPA v2, Metrics Server)
+  [✓] Phase F: High-Concurrency Storage Tier (PostgreSQL 16 & Redis 7)
 ```
 
 | Level | Capability | Technology Applied | Status |
@@ -42,6 +44,8 @@ The project was evolved from a local Python prototype into a **Level 5 Elastic P
 | **Level 4: Declarative GitOps** | GitHub as single source of truth, automated sync, automated drift self-healing | ArgoCD v3.5, Custom Application CRD | **Verified** |
 | **Level 4+: Full Observability** | Golden Signals, real-time MLOps telemetry, in-cluster scraping, visual dashboards | Prometheus, Grafana 10.4, OpenTelemetry | **Verified** |
 | **Level 5: Dynamic Autoscaling** | Elastic inference scaling (1–5 pods), CPU/RAM utilization targets, GitOps reconciliation alignment | Kubernetes HPA v2, Metrics Server | **Verified** |
+| **Level 6: High-Concurrency Tier** | Lock-free telemetry persistence, sub-millisecond in-memory online features, relational model tracking | PostgreSQL 16, Redis 7, SQLAlchemy | **Verified** |
+
 
 ---
 
@@ -229,7 +233,61 @@ To protect the inference layer against latency degradation and compute exhaustio
 
 ---
 
-## 8. Service Topology & Port Matrix
+---
+
+## 8. Phase F: High-Concurrency Storage Tier (PostgreSQL 16 & Redis 7)
+
+To support seamless horizontal scaling (1–5 pods) without data-layer contention, Phase F upgraded the persistent storage tier from single-writer SQLite files to production-grade **PostgreSQL 16** and **Redis 7**.
+
+```
+                           ┌─────────────────────────┐
+                           │   ticket-triage-api     │
+                           │   (HPA: 1-5 Replicas)   │
+                           └────┬───────────────┬────┘
+                                │               │
+          SQLAlchemy Connection │               │ Sub-Millisecond
+          Pool (pool_size=10)   │               │ O(1) Key Lookups
+                                ▼               ▼
+                    ┌───────────────────┐ ┌───────────────┐
+                    │   PostgreSQL 16   │ │    Redis 7    │
+                    │ (Inference Logs & │ │ (Feast Online │
+                    │ MLflow Tracking)  │ │ Feature Store)│
+                    └───────────────────┘ └───────────────┘
+```
+
+### 1. Dual-Backend Architectural Philosophy
+The system guarantees **100% zero-regression backward compatibility**:
+- **Production / Kubernetes / Docker Compose:** Runs with `POSTGRES_DB_URL` and `REDIS_HOST:REDIS_PORT` configured, activating connection-pooled PostgreSQL and in-memory Redis.
+- **Offline / CI / Isolated Testing:** If environment variables are omitted, the application automatically and gracefully falls back to SQLite WAL mode and local SQLite Feast store, requiring zero external daemons for CI runners or bare developer machines.
+
+### 2. Lock-Free Inference Telemetry (PostgreSQL 16)
+- **Problem:** SQLite uses database-level write locks. When the HPA scales the API to multiple concurrent replicas writing inference feedback simultaneously, SQLite throws `sqlite3.OperationalError: database is locked`.
+- **Solution (`src/infrastructure/monitoring/prediction_logger.py`):**
+  - Replaced raw SQLite queries with an enterprise SQLAlchemy 2.0 metadata engine.
+  - Dialect-agnostic schema with `BigInteger`, `Float`, `String`, and native `JSON` / `Text` payload serialization.
+  - Configured high-concurrency connection pooling (`pool_size=10`, `max_overflow=20`, `pool_recycle=1800`, `pool_pre_ping=True`).
+
+### 3. Sub-Millisecond Online Feature Serving (Redis 7)
+- **Problem:** SQLite Feast online store bottlenecked inference throughput under burst traffic due to synchronous disk I/O.
+- **Solution (`src/infrastructure/features/feast_store.py` & `feature_generator.py`):**
+  - Implemented dynamic programmatic `RedisOnlineStoreConfig` when `REDIS_HOST` is supplied.
+  - In-memory key-value lookups with $O(1)$ time complexity for customer feature enrichment during ticket routing.
+  - Relative parquet source paths (`data/customer_features.parquet`) ensure cross-platform compatibility across Windows, Linux containers, and CI.
+
+### 4. Concurrent MLflow Tracking Backend
+- **Implementation:** Initialized a dedicated `mlflow` database inside PostgreSQL via [`deploy/postgres/init.sql`](file:///d:/Year2/Support%20Ticket%20Triage%20&%20Routing%20System/deploy/postgres/init.sql).
+- Configured MLflow tracking server to use `--backend-store-uri postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mlflow`, preventing file concurrency race conditions during parallel model training experiments.
+
+### 5. Declarative Infrastructure & Kubernetes Helm Chart
+- **Database Initialization:** Added declarative [`init.sql`](file:///d:/Year2/Support%20Ticket%20Triage%20&%20Routing%20System/deploy/postgres/init.sql) and [`configmap-postgres-init.yaml`](file:///d:/Year2/Support%20Ticket%20Triage%20&%20Routing%20System/deploy/helm/ticket-triage/templates/configmap-postgres-init.yaml) creating both `ticket_triage` and `mlflow` databases automatically on startup.
+- **Stateful Deployments & PVCs:** Created dedicated Kubernetes manifests:
+  - [`deployment-postgres.yaml`](file:///d:/Year2/Support%20Ticket%20Triage%20&%20Routing%20System/deploy/helm/ticket-triage/templates/deployment-postgres.yaml) & [`service-postgres.yaml`](file:///d:/Year2/Support%20Ticket%20Triage%20&%20Routing%20System/deploy/helm/ticket-triage/templates/service-postgres.yaml)
+  - [`deployment-redis.yaml`](file:///d:/Year2/Support%20Ticket%20Triage%20&%20Routing%20System/deploy/helm/ticket-triage/templates/deployment-redis.yaml) & [`service-redis.yaml`](file:///d:/Year2/Support%20Ticket%20Triage%20&%20Routing%20System/deploy/helm/ticket-triage/templates/service-redis.yaml)
+  - Dedicated persistent volume claims (`postgres-pvc`, `redis-pvc`) for zero data loss across pod restarts.
+
+---
+
+## 9. Service Topology & Port Matrix
 
 | Service | Port | Access URL | Authentication | Role |
 | :--- | :--- | :--- | :--- | :--- |
@@ -238,13 +296,15 @@ To protect the inference layer against latency degradation and compute exhaustio
 | **Prometheus Scrape Endpoint** | `8080` | [http://localhost:8080/metrics](http://localhost:8080/metrics) | None (Public) | Raw Prometheus exposition metric output |
 | **ArgoCD GitOps Dashboard** | `8081` | [http://localhost:8081](http://localhost:8081) | `admin` / `bSdHlngsHTzwSt50` | GitOps topology, cluster sync & self-healing |
 | **Grafana Observability** | `3000` | [http://localhost:3000/d/ticket-triage-mlops](http://localhost:3000/d/ticket-triage-mlops) | Anonymous Admin (None required) | Golden Signals & MLOps visual dashboard |
+| **PostgreSQL 16 Database** | `5432` | In-cluster / internal | `postgres` / `postgres` | Inference telemetry & MLflow backend store |
+| **Redis 7 Online Store** | `6379` (`6380` on host) | In-cluster / internal | None (Internal) | Sub-millisecond Feast online feature store |
 | **MLflow Model Registry** | `5000` | In-cluster / internal | None (Internal) | Experiment tracking & model versioning |
 | **Prometheus Server** | `9090` | In-cluster / internal | None (Internal) | Time-series metric database & scraper |
 | **Kubernetes Metrics Server** | `10250` | In-cluster / internal | RBAC / ServiceAccount | Real-time container resource telemetry provider |
 
 ---
 
-## 9. Operator Runbook & Automation Cheat Sheet
+## 10. Operator Runbook & Automation Cheat Sheet
 
 All platform management tasks are encapsulated in PowerShell automation scripts under `deploy/scripts/`:
 
@@ -276,7 +336,7 @@ All platform management tasks are encapsulated in PowerShell automation scripts 
   .\deploy\scripts\argocd-ui.ps1
   ```
 
-### 3. Monitoring, Autoscaling & Load Testing
+### 3. Monitoring, Autoscaling & Storage Verification
 * **Launch Grafana Observability Dashboard:**
   ```powershell
   .\deploy\scripts\grafana-ui.ps1
@@ -288,6 +348,13 @@ All platform management tasks are encapsulated in PowerShell automation scripts 
 * **Execute High-Concurrency Stress / Load Test:**
   ```powershell
   .\deploy\scripts\load-test.ps1 -Concurrency 30 -DurationSeconds 60
+  ```
+* **Verify PostgreSQL & Redis Storage Health:**
+  ```powershell
+  # Check PostgreSQL connection and table rows
+  docker compose exec postgres psql -U postgres -d ticket_triage -c "SELECT COUNT(*) FROM inference_logs;"
+  # Check Redis Feast keys
+  docker compose exec redis redis-cli DBSIZE
   ```
 * **Query active cluster pods:**
   ```powershell

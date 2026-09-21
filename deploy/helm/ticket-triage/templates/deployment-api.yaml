@@ -37,6 +37,17 @@ spec:
               value: {{ .Values.api.env.FEAST_USAGE | quote }}
             - name: MLFLOW_TRACKING_URI
               value: {{ .Values.api.env.MLFLOW_TRACKING_URI | quote }}
+            {{- if .Values.api.env.POSTGRES_DB_URL }}
+            - name: POSTGRES_DB_URL
+              value: {{ .Values.api.env.POSTGRES_DB_URL | quote }}
+            {{- end }}
+            {{- if .Values.api.env.REDIS_HOST }}
+            - name: REDIS_HOST
+              value: {{ .Values.api.env.REDIS_HOST | quote }}
+            - name: REDIS_PORT
+              value: {{ .Values.api.env.REDIS_PORT | default 6379 | quote }}
+            {{- end }}
+
           livenessProbe:
             httpGet:
               path: {{ .Values.api.probes.liveness.path }}

@@ -13,8 +13,11 @@ api:
     type: ClusterIP
     port: 8000
   env:
-    FEAST_USAGE: "False"
+    FEAST_USAGE: "True"
     MLFLOW_TRACKING_URI: "http://ticket-triage-mlflow:5000"
+    POSTGRES_DB_URL: "postgresql+psycopg2://postgres:postgres@ticket-triage-postgres:5432/ticket_triage"
+    REDIS_HOST: "ticket-triage-redis"
+    REDIS_PORT: "6379"
   resources:
     limits:
       cpu: "2"
@@ -52,8 +55,19 @@ frontend:
     requests:
       cpu: "100m"
       memory: 64Mi
+  probes:
+    liveness:
+      path: /
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      failureThreshold: 3
+    readiness:
+      path: /
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      failureThreshold: 3
 
-# 3. MLflow Model Registry Server
+# 3. MLflow Model Registry & Tracking
 mlflow:
   name: mlflow
   replicaCount: 1
@@ -68,7 +82,7 @@ mlflow:
     - "mlflow"
     - "server"
     - "--backend-store-uri"
-    - "sqlite:///app/data/mlruns.db"
+    - "postgresql+psycopg2://postgres:postgres@ticket-triage-postgres:5432/mlflow"
     - "--default-artifact-root"
     - "/app/mlruns"
     - "--host"
@@ -76,7 +90,7 @@ mlflow:
     - "--port"
     - "5000"
     - "--workers"
-    - "1"
+    - "2"
   resources:
     limits:
       cpu: "1"
@@ -129,5 +143,22 @@ autoscaling:
   maxReplicas: 5
   targetCPUUtilizationPercentage: 60
   targetMemoryUtilizationPercentage: 90
+
+# 8. High-Concurrency Database & Cache (PostgreSQL & Redis)
+database:
+  enabled: true
+  image: postgres:16-alpine
+  port: 5432
+  user: postgres
+  password: postgres
+  name: ticket_triage
+  storage: 2Gi
+
+redis:
+  enabled: true
+  image: redis:7-alpine
+  port: 6379
+  storage: 1Gi
+
 
 

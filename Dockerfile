@@ -30,7 +30,9 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     sqlite3 \
+    libpq5 \
     && rm -rf /var/lib/apt/lists/*
+
 
 # Copy installed packages from builder
 COPY --from=builder /install/pkg /usr/local

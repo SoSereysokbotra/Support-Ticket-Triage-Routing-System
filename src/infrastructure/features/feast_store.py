@@ -29,15 +29,48 @@ class FeastFeatureStoreAdapter(IFeatureStore):
         "is_vip": False,
     }
 
-    def __init__(self, repo_path: Optional[Path] = None) -> None:
+    def __init__(
+        self,
+        repo_path: Optional[Path] = None,
+        redis_host: Optional[str] = None,
+        redis_port: Optional[int] = None,
+    ) -> None:
+        import os
+
         self.repo_path = repo_path or (Path(__file__).resolve().parents[3] / "features")
         self._store: Optional[FeatureStore] = None
+
+        env_redis_host = os.getenv("REDIS_HOST")
+        env_redis_port = os.getenv("REDIS_PORT", "6379")
+        self.redis_host = redis_host or env_redis_host
+        self.redis_port = redis_port or (int(env_redis_port) if env_redis_port else 6379)
+
+    @property
+    def is_redis(self) -> bool:
+        return bool(self.redis_host)
 
     @property
     def store(self) -> FeatureStore:
         if self._store is None:
-            self._store = FeatureStore(repo_path=str(self.repo_path))
+            if self.redis_host:
+                from feast.infra.online_stores.redis import RedisOnlineStoreConfig
+                from feast.repo_config import RepoConfig
+
+                registry_path = (self.repo_path / "data" / "registry.pb").as_posix()
+                repo_config = RepoConfig(
+                    project="ticket_triage_features",
+                    registry=registry_path,
+                    provider="local",
+                    online_store=RedisOnlineStoreConfig(
+                        connection_string=f"{self.redis_host}:{self.redis_port}"
+                    ),
+                    entity_key_serialization_version=3,
+                )
+                self._store = FeatureStore(config=repo_config)
+            else:
+                self._store = FeatureStore(repo_path=str(self.repo_path))
         return self._store
+
 
     def get_historical_features(
         self,
