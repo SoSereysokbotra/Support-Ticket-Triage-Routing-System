@@ -12,14 +12,15 @@
 4. [Phase B: Kubernetes & Helm Container Orchestration (k3d)](#4-phase-b-kubernetes--helm-container-orchestration-k3d)
 5. [Phase C: Declarative GitOps with ArgoCD](#5-phase-c-declarative-gitops-with-argocd)
 6. [Phase D: Production Observability (Prometheus & Grafana)](#6-phase-d-production-observability-prometheus--grafana)
-7. [Service Topology & Port Matrix](#7-service-topology--port-matrix)
-8. [Operator Runbook & Automation Cheat Sheet](#8-operator-runbook--automation-cheat-sheet)
+7. [Phase E: Dynamic Horizontal Pod Autoscaling (HPA v2)](#7-phase-e-dynamic-horizontal-pod-autoscaling-hpa-v2)
+8. [Service Topology & Port Matrix](#8-service-topology--port-matrix)
+9. [Operator Runbook & Automation Cheat Sheet](#9-operator-runbook--automation-cheat-sheet)
 
 ---
 
 ## 1. Platform Evolution Summary & Maturity Ladder
 
-The project was evolved from a local Python prototype into a **Level 4 Production ML Platform** adhering to the principle:
+The project was evolved from a local Python prototype into a **Level 5 Elastic Production ML Platform** adhering to the principle:
 > **"First make the system correct. Then make it automated. Then make it observable. Then make it sophisticated."**
 
 ```text
@@ -30,6 +31,7 @@ The project was evolved from a local Python prototype into a **Level 4 Productio
   [✓] Phase B: Kubernetes & Helm Container Orchestration (k3d, Traefik Ingress)
   [✓] Phase C: Declarative GitOps Continuous Delivery (ArgoCD, Self-Healing)
   [✓] Phase D: Full Production Observability (Prometheus, Grafana, MLOps KPIs)
+  [✓] Phase E: Dynamic Horizontal Pod Autoscaling (HPA v2, Metrics Server)
 ```
 
 | Level | Capability | Technology Applied | Status |
@@ -39,6 +41,7 @@ The project was evolved from a local Python prototype into a **Level 4 Productio
 | **Level 3: Container Orchestration** | Multi-node Kubernetes cluster, unified Helm chart, PVC storage, rolling updates | k3d, k3s, Helm 3, Traefik Ingress | **Verified** |
 | **Level 4: Declarative GitOps** | GitHub as single source of truth, automated sync, automated drift self-healing | ArgoCD v3.5, Custom Application CRD | **Verified** |
 | **Level 4+: Full Observability** | Golden Signals, real-time MLOps telemetry, in-cluster scraping, visual dashboards | Prometheus, Grafana 10.4, OpenTelemetry | **Verified** |
+| **Level 5: Dynamic Autoscaling** | Elastic inference scaling (1–5 pods), CPU/RAM utilization targets, GitOps reconciliation alignment | Kubernetes HPA v2, Metrics Server | **Verified** |
 
 ---
 
@@ -204,7 +207,29 @@ Mounted standard Prometheus exposition format at `/metrics`:
 
 ---
 
-## 7. Service Topology & Port Matrix
+## 7. Phase E: Dynamic Horizontal Pod Autoscaling (HPA v2)
+
+To protect the inference layer against latency degradation and compute exhaustion during peak ticket surges, the platform implements native Kubernetes **HorizontalPodAutoscaler (HPA v2)** coupled with a dedicated **Metrics Server**.
+
+### Key Architectural Enhancements:
+1. **Cluster Metrics Layer (`metrics-server`):**
+   - Deployed into `kube-system` namespace to expose the `metrics.k8s.io` API.
+   - Configured with `--kubelet-insecure-tls` for local containerized k3d multi-node networking.
+   - Supplies sub-minute pod CPU (`kubectl top pods`) and memory consumption metrics to the Kubernetes HPA controller.
+2. **Declarative HPA Spec (`deploy/helm/ticket-triage/templates/hpa.yaml`):**
+   - **Target:** `ticket-triage-api` deployment.
+   - **Replica Range:** `minReplicas: 1`, `maxReplicas: 5`.
+   - **Target Thresholds:** CPU average utilization `60%`, Memory average utilization `80%`.
+   - **Responsive Scaling Policies:**
+     - **Scale-Up:** Immediate (0s stabilization window, up to 100% pod increase or +2 pods every 15s).
+     - **Scale-Down:** Controlled (60s stabilization window, gradual 50% pod reduction every 30s to eliminate metric thrashing).
+3. **GitOps Reconciliation Alignment (`deploy/argocd/application.yaml`):**
+   - Resolves the classic GitOps vs. Autoscaling race condition where ArgoCD `selfHeal: true` would otherwise overwrite HPA scaling decisions back to `values.yaml`'s static `replicaCount: 1`.
+   - Declares `spec.ignoreDifferences` targeting `ticket-triage-api` deployment at `/spec/replicas`.
+
+---
+
+## 8. Service Topology & Port Matrix
 
 | Service | Port | Access URL | Authentication | Role |
 | :--- | :--- | :--- | :--- | :--- |
@@ -215,10 +240,11 @@ Mounted standard Prometheus exposition format at `/metrics`:
 | **Grafana Observability** | `3000` | [http://localhost:3000/d/ticket-triage-mlops](http://localhost:3000/d/ticket-triage-mlops) | Anonymous Admin (None required) | Golden Signals & MLOps visual dashboard |
 | **MLflow Model Registry** | `5000` | In-cluster / internal | None (Internal) | Experiment tracking & model versioning |
 | **Prometheus Server** | `9090` | In-cluster / internal | None (Internal) | Time-series metric database & scraper |
+| **Kubernetes Metrics Server** | `10250` | In-cluster / internal | RBAC / ServiceAccount | Real-time container resource telemetry provider |
 
 ---
 
-## 8. Operator Runbook & Automation Cheat Sheet
+## 9. Operator Runbook & Automation Cheat Sheet
 
 All platform management tasks are encapsulated in PowerShell automation scripts under `deploy/scripts/`:
 
@@ -226,6 +252,10 @@ All platform management tasks are encapsulated in PowerShell automation scripts 
 * **Spin up cluster:**
   ```powershell
   .\deploy\scripts\cluster-up.ps1
+  ```
+* **Enable / Verify Metrics Server:**
+  ```powershell
+  .\deploy\scripts\enable-metrics.ps1
   ```
 * **Tear down cluster and clean resources:**
   ```powershell
@@ -246,19 +276,18 @@ All platform management tasks are encapsulated in PowerShell automation scripts 
   .\deploy\scripts\argocd-ui.ps1
   ```
 
-### 3. Monitoring & Dashboards
+### 3. Monitoring, Autoscaling & Load Testing
 * **Launch Grafana Observability Dashboard:**
   ```powershell
   .\deploy\scripts\grafana-ui.ps1
   ```
-* **Send test prediction traffic:**
+* **Watch HPA Scaling in Real-Time:**
   ```powershell
-  python -c "
-  import urllib.request, json
-  data = json.dumps({'ticket_id': 'TEST-1', 'text': 'Credit card billing failure', 'customer_id': '101'}).encode('utf-8')
-  req = urllib.request.Request('http://localhost:8080/api/v1/predict', data=data, headers={'Content-Type': 'application/json'})
-  print(urllib.request.urlopen(req).read().decode('utf-8'))
-  "
+  kubectl get hpa ticket-triage-api -w
+  ```
+* **Execute High-Concurrency Stress / Load Test:**
+  ```powershell
+  .\deploy\scripts\load-test.ps1 -Concurrency 30 -DurationSeconds 60
   ```
 * **Query active cluster pods:**
   ```powershell
