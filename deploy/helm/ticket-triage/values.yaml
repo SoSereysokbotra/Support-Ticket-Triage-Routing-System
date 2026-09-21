@@ -128,6 +128,6 @@ autoscaling:
   minReplicas: 1
   maxReplicas: 5
   targetCPUUtilizationPercentage: 60
-  targetMemoryUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 90
 
 
