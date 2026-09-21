@@ -3,8 +3,8 @@ Prometheus Metrics Instrumentation for Support Ticket Triage System
 Provides Prometheus Counters, Gauges, and Histograms for HTTP and ML telemetry.
 """
 
-import time
 from typing import Any, Dict
+
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
     Counter,

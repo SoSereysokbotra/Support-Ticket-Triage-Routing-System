@@ -6,19 +6,18 @@ from typing import AsyncIterator
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.infrastructure.monitoring.metrics import (
-    HTTP_REQUESTS_TOTAL,
-    HTTP_REQUEST_DURATION_SECONDS,
-    get_metrics_content_type,
-    get_prometheus_metrics,
-)
-
 from src.application.use_cases.predict_ticket import PredictTicketUseCase
 from src.application.use_cases.route_ticket import RouteTicketUseCase
 from src.infrastructure.data.dataset_loader import DatasetLoader
 from src.infrastructure.features.feast_store import FeastFeatureStoreAdapter
 from src.infrastructure.models.baseline_classifier import BaselineTfidfClassifier
 from src.infrastructure.models.distilbert_classifier import DistilBertTicketClassifier
+from src.infrastructure.monitoring.metrics import (
+    HTTP_REQUEST_DURATION_SECONDS,
+    HTTP_REQUESTS_TOTAL,
+    get_metrics_content_type,
+    get_prometheus_metrics,
+)
 from src.infrastructure.monitoring.prediction_logger import PredictionLogger
 from src.infrastructure.registry.mlflow_registry import MLflowModelRegistry
 from src.presentation.api.routes.health import router as health_router
