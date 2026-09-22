@@ -24,6 +24,7 @@ from src.infrastructure.monitoring.metrics import (
 from src.infrastructure.monitoring.prediction_logger import PredictionLogger
 from src.infrastructure.registry.mlflow_registry import MLflowModelRegistry
 from src.infrastructure.websocket.connection_manager import WebSocketConnectionManager
+from src.infrastructure.workers.alert_dispatcher_worker import AlertDispatcherWorker
 from src.infrastructure.workers.sla_watchdog_worker import SLAWatchdogWorker
 from src.presentation.api.routes.auth_v2 import router as auth_v2_router
 from src.presentation.api.routes.copilot_v2 import router as copilot_v2_router
@@ -33,6 +34,7 @@ from src.presentation.api.routes.predict import router as predict_router
 from src.presentation.api.routes.registry import router as registry_router
 from src.presentation.api.routes.sla_v2 import router as sla_v2_router
 from src.presentation.api.routes.tickets_v2 import router as tickets_v2_router
+from src.presentation.api.routes.webhooks_v2 import router as webhooks_v2_router
 from src.presentation.api.routes.websocket_v2 import router as websocket_v2_router
 
 
@@ -82,6 +84,15 @@ def create_app(model_override=None, registry_override=None, logger_override=None
             )
             sla_watchdog.start()
             app.state.sla_watchdog = sla_watchdog
+
+        # Initialize Event-Driven Alert Dispatcher Daemon (Slack, PagerDuty, Webhooks)
+        if not getattr(app.state, "alert_dispatcher", None):
+            alert_dispatcher = AlertDispatcherWorker(
+                event_bus=app.state.event_bus,
+                repository=app.state.enterprise_repository,
+            )
+            alert_dispatcher.start()
+            app.state.alert_dispatcher = alert_dispatcher
 
 
         if model_override:
@@ -161,6 +172,8 @@ def create_app(model_override=None, registry_override=None, logger_override=None
         yield
 
         print("[Lifespan] Application shutting down...")
+        if getattr(app.state, "alert_dispatcher", None):
+            app.state.alert_dispatcher.stop()
         if getattr(app.state, "sla_watchdog", None):
             app.state.sla_watchdog.stop()
 
@@ -204,6 +217,7 @@ def create_app(model_override=None, registry_override=None, logger_override=None
     app.include_router(sla_v2_router)
     app.include_router(websocket_v2_router)
     app.include_router(copilot_v2_router)
+    app.include_router(webhooks_v2_router)
 
     return app
 

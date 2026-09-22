@@ -160,5 +160,15 @@ redis:
   port: 6379
   storage: 1Gi
 
+# 9. Pod Disruption Budget (High Availability during Node Drain)
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# 10. Alerting & Incident Integrations
+alerting:
+  slackWebhookUrl: ""
+  pagerdutyRoutingKey: ""
+
 
 

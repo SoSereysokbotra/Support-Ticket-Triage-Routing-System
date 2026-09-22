@@ -39,6 +39,7 @@ from src.domain.entities.tenant import (
     User,
     UserRole,
 )
+from src.domain.entities.webhook import WebhookSubscription
 from src.domain.interfaces.tenant_interface import (
     IEnterpriseTicketRepository,
     ITenantRepository,
@@ -119,6 +120,19 @@ agent_feedback_annotations_table = Table(
     Column("original_confidence", Float, nullable=False),
     Column("reclassification_reason", Text, nullable=True),
     Column("is_used_in_retraining", Boolean, nullable=False, default=False),
+    Column("created_at", DateTime, default=lambda: datetime.now(timezone.utc)),
+)
+
+webhook_subscriptions_table = Table(
+    "webhook_subscriptions",
+    metadata,
+    Column("subscription_id", String(64), primary_key=True),
+    Column("tenant_id", String(64), nullable=False, index=True),
+    Column("target_url", String(1024), nullable=False),
+    Column("secret_token", String(255), nullable=False),
+    Column("events_subscribed", Text, nullable=False),
+    Column("description", String(255), nullable=True),
+    Column("is_active", Boolean, nullable=False, default=True),
     Column("created_at", DateTime, default=lambda: datetime.now(timezone.utc)),
 )
 
@@ -652,3 +666,110 @@ class EnterpriseRepository(ITenantRepository, IUserRepository, IEnterpriseTicket
         if not ticket:
             raise ValueError(f"Ticket '{ticket_id}' not found in current tenant.")
         return ticket
+
+    # -------------------------------------------------------------------------
+    # Outbound Webhook Subscriptions (Tenant Isolated)
+    # -------------------------------------------------------------------------
+    def _row_to_webhook(self, r: Any) -> WebhookSubscription:
+        events = r["events_subscribed"]
+        if isinstance(events, str):
+            try:
+                events = json.loads(events)
+            except Exception:
+                events = [e.strip() for e in events.split(",") if e.strip()]
+        return WebhookSubscription(
+            subscription_id=r["subscription_id"],
+            tenant_id=r["tenant_id"],
+            target_url=r["target_url"],
+            secret_token=r["secret_token"],
+            events_subscribed=events,
+            description=r.get("description"),
+            is_active=bool(r["is_active"]),
+            created_at=r["created_at"],
+        )
+
+    def save_webhook_subscription(self, subscription: WebhookSubscription) -> WebhookSubscription:
+        """Persists or updates an outbound webhook registration."""
+        with self.engine.begin() as conn:
+            existing = conn.execute(
+                select(webhook_subscriptions_table.c.subscription_id).where(
+                    webhook_subscriptions_table.c.subscription_id == subscription.subscription_id
+                )
+            ).first()
+
+            events_json = json.dumps(subscription.events_subscribed)
+
+            if existing:
+                stmt = (
+                    update(webhook_subscriptions_table)
+                    .where(webhook_subscriptions_table.c.subscription_id == subscription.subscription_id)
+                    .values(
+                        target_url=subscription.target_url,
+                        secret_token=subscription.secret_token,
+                        events_subscribed=events_json,
+                        description=subscription.description,
+                        is_active=subscription.is_active,
+                    )
+                )
+            else:
+                stmt = webhook_subscriptions_table.insert().values(
+                    subscription_id=subscription.subscription_id,
+                    tenant_id=subscription.tenant_id,
+                    target_url=subscription.target_url,
+                    secret_token=subscription.secret_token,
+                    events_subscribed=events_json,
+                    description=subscription.description,
+                    is_active=subscription.is_active,
+                    created_at=subscription.created_at,
+                )
+            conn.execute(stmt)
+        return subscription
+
+    def get_webhook_subscription(
+        self,
+        tenant_id: str,
+        subscription_id: str,
+    ) -> Optional[WebhookSubscription]:
+        """Retrieves a specific webhook subscription within tenant scope."""
+        with self.engine.connect() as conn:
+            stmt = select(webhook_subscriptions_table).where(
+                webhook_subscriptions_table.c.tenant_id == tenant_id,
+                webhook_subscriptions_table.c.subscription_id == subscription_id,
+            )
+            row = conn.execute(stmt).mappings().first()
+            if not row:
+                return None
+            return self._row_to_webhook(row)
+
+    def list_webhook_subscriptions(self, tenant_id: str) -> List[WebhookSubscription]:
+        """Lists all registered webhooks for the tenant."""
+        with self.engine.connect() as conn:
+            stmt = (
+                select(webhook_subscriptions_table)
+                .where(webhook_subscriptions_table.c.tenant_id == tenant_id)
+                .order_by(webhook_subscriptions_table.c.created_at.desc())
+            )
+            rows = conn.execute(stmt).mappings().all()
+            return [self._row_to_webhook(r) for r in rows]
+
+    def delete_webhook_subscription(self, tenant_id: str, subscription_id: str) -> bool:
+        """Deletes a webhook subscription enforcing tenant boundary."""
+        with self.engine.begin() as conn:
+            stmt = (
+                webhook_subscriptions_table.delete()
+                .where(
+                    webhook_subscriptions_table.c.tenant_id == tenant_id,
+                    webhook_subscriptions_table.c.subscription_id == subscription_id,
+                )
+            )
+            res = conn.execute(stmt)
+            return bool(res.rowcount > 0)
+
+    def get_active_subscriptions_for_event(
+        self,
+        tenant_id: str,
+        event_type: str,
+    ) -> List[WebhookSubscription]:
+        """Retrieves active subscriptions registered for a particular event type."""
+        all_tenant_subs = self.list_webhook_subscriptions(tenant_id)
+        return [sub for sub in all_tenant_subs if sub.is_subscribed_to(event_type)]
