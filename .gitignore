@@ -38,6 +38,7 @@ features/data/*.pb
 # Monitoring Telemetry & Reports
 data/monitoring/*.db*
 data/monitoring/reports/*
+data/enterprise/*.db*
 data/monitoring/*.csv
 !data/monitoring/.gitkeep
 

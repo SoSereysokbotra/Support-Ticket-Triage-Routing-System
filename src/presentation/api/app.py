@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.application.use_cases.predict_ticket import PredictTicketUseCase
 from src.application.use_cases.route_ticket import RouteTicketUseCase
 from src.infrastructure.data.dataset_loader import DatasetLoader
+from src.infrastructure.database.enterprise_repository import EnterpriseRepository
 from src.infrastructure.features.feast_store import FeastFeatureStoreAdapter
 from src.infrastructure.models.baseline_classifier import BaselineTfidfClassifier
 from src.infrastructure.models.distilbert_classifier import DistilBertTicketClassifier
@@ -21,10 +22,12 @@ from src.infrastructure.monitoring.metrics import (
 )
 from src.infrastructure.monitoring.prediction_logger import PredictionLogger
 from src.infrastructure.registry.mlflow_registry import MLflowModelRegistry
+from src.presentation.api.routes.auth_v2 import router as auth_v2_router
 from src.presentation.api.routes.health import router as health_router
 from src.presentation.api.routes.monitoring import router as monitoring_router
 from src.presentation.api.routes.predict import router as predict_router
 from src.presentation.api.routes.registry import router as registry_router
+from src.presentation.api.routes.tickets_v2 import router as tickets_v2_router
 
 
 def create_app(model_override=None, registry_override=None, logger_override=None) -> FastAPI:
@@ -48,6 +51,13 @@ def create_app(model_override=None, registry_override=None, logger_override=None
                 db_url=postgres_url,
             )
             app.state.prediction_logger = prediction_logger
+
+        # Initialize Multi-Tenant Enterprise Repository
+        if not getattr(app.state, "enterprise_repository", None):
+            import os
+
+            postgres_url = os.getenv("POSTGRES_DB_URL") or os.getenv("DATABASE_URL")
+            app.state.enterprise_repository = EnterpriseRepository(db_url=postgres_url)
 
 
         if model_override:
@@ -163,6 +173,8 @@ def create_app(model_override=None, registry_override=None, logger_override=None
     app.include_router(predict_router)
     app.include_router(registry_router)
     app.include_router(monitoring_router)
+    app.include_router(auth_v2_router)
+    app.include_router(tickets_v2_router)
 
     return app
 
