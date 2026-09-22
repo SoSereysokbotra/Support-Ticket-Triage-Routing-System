@@ -1,7 +1,7 @@
 """
 Enterprise SQLAlchemy Repository for Multi-Tenancy, Users, and Enterprise Tickets.
 Supports PostgreSQL 16 (production) and SQLite (testing/local development).
-Guarantees tenant isolation on every operation.
+Guarantees tenant isolation and SLA tracking on every operation.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from sqlalchemy import (
     Boolean,
@@ -22,7 +22,9 @@ from sqlalchemy import (
     Table,
     Text,
     create_engine,
+    or_,
     select,
+    update,
 )
 
 from src.domain.entities.tenant import (
@@ -88,6 +90,12 @@ enterprise_tickets_table = Table(
     Column("model_version", String(64), nullable=False),
     Column("latency_ms", Float, nullable=False),
     Column("assigned_agent_id", String(64), nullable=True),
+    Column("sla_response_deadline", DateTime, nullable=True),
+    Column("sla_resolution_deadline", DateTime, nullable=True),
+    Column("sla_warning_emitted", Boolean, nullable=False, default=False),
+    Column("escalated", Boolean, nullable=False, default=False),
+    Column("escalation_reason", Text, nullable=True),
+    Column("resolved_at", DateTime, nullable=True),
     Column("copilot_suggested_response", Text, nullable=True),
     Column("created_at", DateTime, default=lambda: datetime.now(timezone.utc)),
 )
@@ -96,7 +104,7 @@ enterprise_tickets_table = Table(
 class EnterpriseRepository(ITenantRepository, IUserRepository, IEnterpriseTicketRepository):
     """
     Unified multi-tenant repository providing thread-safe persistence
-    for tenants, users, and enterprise tickets.
+    for tenants, users, and enterprise tickets with SLA tracking.
     """
 
     def __init__(self, db_url: Optional[str] = None) -> None:
@@ -115,6 +123,37 @@ class EnterpriseRepository(ITenantRepository, IUserRepository, IEnterpriseTicket
 
         # Bootstrap tables
         metadata.create_all(self.engine)
+
+    # -------------------------------------------------------------------------
+    # Helper Mapper
+    # -------------------------------------------------------------------------
+    @staticmethod
+    def _row_to_ticket(r: Any) -> EnterpriseTicket:
+        return EnterpriseTicket(
+            ticket_id=r["ticket_id"],
+            tenant_id=r["tenant_id"],
+            title=r["title"],
+            description=r["description"],
+            customer_id=r["customer_id"],
+            customer_tier=CustomerTier(r["customer_tier"]),
+            status=TicketStatus(r["status"]),
+            predicted_category=r["predicted_category"],
+            confidence=float(r["confidence"]),
+            probabilities=json.loads(r["probabilities"]) if isinstance(r["probabilities"], str) else r["probabilities"],
+            assigned_team=r["assigned_team"],
+            priority=TicketPriority(r["priority"]),
+            auto_routed=bool(r["auto_routed"]),
+            model_version=r["model_version"],
+            latency_ms=float(r["latency_ms"]),
+            assigned_agent_id=r["assigned_agent_id"],
+            sla_response_deadline=r["sla_response_deadline"],
+            sla_resolution_deadline=r["sla_resolution_deadline"],
+            sla_warning_emitted=bool(r["sla_warning_emitted"]),
+            escalated=bool(r["escalated"]),
+            escalation_reason=r["escalation_reason"],
+            resolved_at=r["resolved_at"],
+            created_at=r["created_at"],
+        )
 
     # -------------------------------------------------------------------------
     # Tenant Operations
@@ -284,6 +323,12 @@ class EnterpriseRepository(ITenantRepository, IUserRepository, IEnterpriseTicket
                 model_version=ticket.model_version,
                 latency_ms=ticket.latency_ms,
                 assigned_agent_id=ticket.assigned_agent_id,
+                sla_response_deadline=ticket.sla_response_deadline,
+                sla_resolution_deadline=ticket.sla_resolution_deadline,
+                sla_warning_emitted=ticket.sla_warning_emitted,
+                escalated=ticket.escalated,
+                escalation_reason=ticket.escalation_reason,
+                resolved_at=ticket.resolved_at,
                 copilot_suggested_response=None,
                 created_at=ticket.created_at,
             )
@@ -301,25 +346,7 @@ class EnterpriseRepository(ITenantRepository, IUserRepository, IEnterpriseTicket
             row = conn.execute(stmt).mappings().first()
             if not row:
                 return None
-            return EnterpriseTicket(
-                ticket_id=row["ticket_id"],
-                tenant_id=row["tenant_id"],
-                title=row["title"],
-                description=row["description"],
-                customer_id=row["customer_id"],
-                customer_tier=CustomerTier(row["customer_tier"]),
-                status=TicketStatus(row["status"]),
-                predicted_category=row["predicted_category"],
-                confidence=float(row["confidence"]),
-                probabilities=json.loads(row["probabilities"]) if isinstance(row["probabilities"], str) else row["probabilities"],
-                assigned_team=row["assigned_team"],
-                priority=TicketPriority(row["priority"]),
-                auto_routed=bool(row["auto_routed"]),
-                model_version=row["model_version"],
-                latency_ms=float(row["latency_ms"]),
-                assigned_agent_id=row["assigned_agent_id"],
-                created_at=row["created_at"],
-            )
+            return self._row_to_ticket(row)
 
     get_by_id_tenant = get_ticket_by_id
 
@@ -337,25 +364,49 @@ class EnterpriseRepository(ITenantRepository, IUserRepository, IEnterpriseTicket
             query = query.order_by(enterprise_tickets_table.c.created_at.desc()).limit(limit).offset(offset)
 
             rows = conn.execute(query).mappings().all()
-            return [
-                EnterpriseTicket(
-                    ticket_id=r["ticket_id"],
-                    tenant_id=r["tenant_id"],
-                    title=r["title"],
-                    description=r["description"],
-                    customer_id=r["customer_id"],
-                    customer_tier=CustomerTier(r["customer_tier"]),
-                    status=TicketStatus(r["status"]),
-                    predicted_category=r["predicted_category"],
-                    confidence=float(r["confidence"]),
-                    probabilities=json.loads(r["probabilities"]) if isinstance(r["probabilities"], str) else r["probabilities"],
-                    assigned_team=r["assigned_team"],
-                    priority=TicketPriority(r["priority"]),
-                    auto_routed=bool(r["auto_routed"]),
-                    model_version=r["model_version"],
-                    latency_ms=float(r["latency_ms"]),
-                    assigned_agent_id=r["assigned_agent_id"],
-                    created_at=r["created_at"],
+            return [self._row_to_ticket(r) for r in rows]
+
+    def update_ticket_sla(self, ticket: EnterpriseTicket) -> EnterpriseTicket:
+        """Updates SLA status, warning flags, and escalation fields on a ticket."""
+        with self.engine.begin() as conn:
+            stmt = (
+                update(enterprise_tickets_table)
+                .where(enterprise_tickets_table.c.ticket_id == ticket.ticket_id)
+                .values(
+                    status=ticket.status.value if isinstance(ticket.status, TicketStatus) else str(ticket.status),
+                    assigned_team=ticket.assigned_team,
+                    sla_warning_emitted=ticket.sla_warning_emitted,
+                    escalated=ticket.escalated,
+                    escalation_reason=ticket.escalation_reason,
+                    resolved_at=ticket.resolved_at,
                 )
-                for r in rows
-            ]
+            )
+            conn.execute(stmt)
+        return ticket
+
+    def get_open_tickets(self, tenant_id: Optional[str] = None) -> List[EnterpriseTicket]:
+        """Retrieves all open tickets across tenants or for a specific tenant."""
+        with self.engine.connect() as conn:
+            query = select(enterprise_tickets_table).where(
+                enterprise_tickets_table.c.status.in_([TicketStatus.OPEN.value, TicketStatus.PENDING_AGENT.value])
+            )
+            if tenant_id:
+                query = query.where(enterprise_tickets_table.c.tenant_id == tenant_id)
+
+            rows = conn.execute(query).mappings().all()
+            return [self._row_to_ticket(r) for r in rows]
+
+    def list_at_risk_tickets(self, tenant_id: str) -> List[EnterpriseTicket]:
+        """Retrieves tickets past warning threshold or breached within tenant boundary."""
+        with self.engine.connect() as conn:
+            query = select(enterprise_tickets_table).where(
+                enterprise_tickets_table.c.tenant_id == tenant_id,
+                or_(
+                    enterprise_tickets_table.c.status == TicketStatus.BREACHED.value,
+                    enterprise_tickets_table.c.escalated.is_(True),
+                    enterprise_tickets_table.c.sla_warning_emitted.is_(True),
+                ),
+            ).order_by(enterprise_tickets_table.c.created_at.desc())
+
+            rows = conn.execute(query).mappings().all()
+            return [self._row_to_ticket(r) for r in rows]

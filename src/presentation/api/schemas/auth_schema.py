@@ -65,3 +65,8 @@ class EnterpriseTicketResponse(BaseModel):
     model_version: str
     latency_ms: float
     created_at: str
+    sla_response_deadline: Optional[str] = None
+    sla_resolution_deadline: Optional[str] = None
+    sla_warning_emitted: Optional[bool] = False
+    escalated: Optional[bool] = False
+    escalation_reason: Optional[str] = None

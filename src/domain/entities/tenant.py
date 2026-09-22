@@ -128,6 +128,12 @@ class EnterpriseTicket:
     status: TicketStatus = TicketStatus.OPEN
     auto_routed: bool = True
     assigned_agent_id: Optional[str] = None
+    sla_response_deadline: Optional[datetime] = None
+    sla_resolution_deadline: Optional[datetime] = None
+    sla_warning_emitted: bool = False
+    escalated: bool = False
+    escalation_reason: Optional[str] = None
+    resolved_at: Optional[datetime] = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def __post_init__(self) -> None:
@@ -135,3 +141,41 @@ class EnterpriseTicket:
             raise ValueError("Ticket description cannot be empty.")
         if not self.tenant_id:
             raise ValueError("Enterprise tickets must belong to a tenant_id.")
+
+    def is_past_resolution_deadline(self, now: Optional[datetime] = None) -> bool:
+        """Returns True if the ticket has passed its SLA resolution deadline."""
+        if not self.sla_resolution_deadline:
+            return False
+        current_time = now or datetime.now(timezone.utc)
+        if current_time.tzinfo is None:
+            current_time = current_time.replace(tzinfo=timezone.utc)
+        deadline = self.sla_resolution_deadline
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=timezone.utc)
+        return current_time >= deadline
+
+    def is_past_warning_threshold(self, now: Optional[datetime] = None, threshold_pct: float = 0.75) -> bool:
+        """Returns True if the ticket has exceeded the specified SLA percentage window."""
+        if not self.sla_resolution_deadline or not self.created_at:
+            return False
+        current_time = now or datetime.now(timezone.utc)
+        if current_time.tzinfo is None:
+            current_time = current_time.replace(tzinfo=timezone.utc)
+        created = self.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        deadline = self.sla_resolution_deadline
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=timezone.utc)
+
+        total_duration = (deadline - created).total_seconds()
+        if total_duration <= 0:
+            return True
+        elapsed = (current_time - created).total_seconds()
+        return (elapsed / total_duration) >= threshold_pct
+
+    def escalate(self, reason: str, new_team: str = "Tier-3 Senior Escalations") -> None:
+        """Escalates ticket to Tier 3 and logs reason."""
+        self.escalated = True
+        self.escalation_reason = reason
+        self.assigned_team = new_team

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from src.application.dto.ticket_dto import TicketInputDTO
@@ -18,6 +19,7 @@ from src.domain.entities.tenant import (
     TicketPriority,
     TicketStatus,
 )
+from src.domain.services.sla_policy_engine import SLAPolicyEngine
 from src.infrastructure.database.enterprise_repository import EnterpriseRepository
 
 
@@ -67,7 +69,15 @@ class CreateEnterpriseTicketUseCase:
         }
         ticket_priority = priority_map.get(prediction_result.priority_level, TicketPriority.P3_MEDIUM)
 
-        # 3. Create & Persist Enterprise Ticket Entity
+        # 3. Compute Dynamic Contractual SLA Deadlines
+        now = datetime.now(timezone.utc)
+        resp_deadline, resol_deadline = SLAPolicyEngine.compute_deadlines(
+            created_at=now,
+            customer_tier=dto.customer_tier,
+            priority=ticket_priority,
+        )
+
+        # 4. Create & Persist Enterprise Ticket Entity
         enterprise_ticket = EnterpriseTicket(
             tenant_id=context.tenant_id,
             title=dto.title,
@@ -83,6 +93,9 @@ class CreateEnterpriseTicketUseCase:
             auto_routed=prediction_result.auto_routed,
             model_version=prediction_result.model_version,
             latency_ms=round(latency_ms, 2),
+            sla_response_deadline=resp_deadline,
+            sla_resolution_deadline=resol_deadline,
+            created_at=now,
         )
 
         return self.repository.save(enterprise_ticket)

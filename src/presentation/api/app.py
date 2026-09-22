@@ -22,11 +22,13 @@ from src.infrastructure.monitoring.metrics import (
 )
 from src.infrastructure.monitoring.prediction_logger import PredictionLogger
 from src.infrastructure.registry.mlflow_registry import MLflowModelRegistry
+from src.infrastructure.workers.sla_watchdog_worker import SLAWatchdogWorker
 from src.presentation.api.routes.auth_v2 import router as auth_v2_router
 from src.presentation.api.routes.health import router as health_router
 from src.presentation.api.routes.monitoring import router as monitoring_router
 from src.presentation.api.routes.predict import router as predict_router
 from src.presentation.api.routes.registry import router as registry_router
+from src.presentation.api.routes.sla_v2 import router as sla_v2_router
 from src.presentation.api.routes.tickets_v2 import router as tickets_v2_router
 
 
@@ -58,6 +60,12 @@ def create_app(model_override=None, registry_override=None, logger_override=None
 
             postgres_url = os.getenv("POSTGRES_DB_URL") or os.getenv("DATABASE_URL")
             app.state.enterprise_repository = EnterpriseRepository(db_url=postgres_url)
+
+        # Initialize SLA Watchdog Worker Daemon
+        if not getattr(app.state, "sla_watchdog", None):
+            sla_watchdog = SLAWatchdogWorker(repository=app.state.enterprise_repository)
+            sla_watchdog.start()
+            app.state.sla_watchdog = sla_watchdog
 
 
         if model_override:
@@ -137,6 +145,8 @@ def create_app(model_override=None, registry_override=None, logger_override=None
         yield
 
         print("[Lifespan] Application shutting down...")
+        if getattr(app.state, "sla_watchdog", None):
+            app.state.sla_watchdog.stop()
 
     app = FastAPI(
         title="Support Ticket Triage & Routing System",
@@ -175,6 +185,7 @@ def create_app(model_override=None, registry_override=None, logger_override=None
     app.include_router(monitoring_router)
     app.include_router(auth_v2_router)
     app.include_router(tickets_v2_router)
+    app.include_router(sla_v2_router)
 
     return app
 

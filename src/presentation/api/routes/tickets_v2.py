@@ -12,12 +12,39 @@ from src.application.use_cases.enterprise_ticket_use_cases import (
     CreateEnterpriseTicketUseCase,
     ListEnterpriseTicketsUseCase,
 )
-from src.domain.entities.tenant import CustomerTier, TenantContext
+from src.domain.entities.tenant import CustomerTier, EnterpriseTicket, TenantContext
 from src.presentation.api.dependencies.auth import get_current_tenant_context
 from src.presentation.api.schemas.auth_schema import (
     CreateEnterpriseTicketRequest,
     EnterpriseTicketResponse,
 )
+
+
+def map_ticket_to_response(ticket: EnterpriseTicket) -> EnterpriseTicketResponse:
+    return EnterpriseTicketResponse(
+        ticket_id=ticket.ticket_id,
+        tenant_id=ticket.tenant_id,
+        title=ticket.title,
+        description=ticket.description,
+        customer_id=ticket.customer_id,
+        customer_tier=ticket.customer_tier.value,
+        status=ticket.status.value,
+        predicted_category=ticket.predicted_category,
+        confidence=ticket.confidence,
+        probabilities=ticket.probabilities,
+        assigned_team=ticket.assigned_team,
+        priority=ticket.priority.value,
+        auto_routed=ticket.auto_routed,
+        model_version=ticket.model_version,
+        latency_ms=ticket.latency_ms,
+        created_at=ticket.created_at.isoformat(),
+        sla_response_deadline=ticket.sla_response_deadline.isoformat() if ticket.sla_response_deadline else None,
+        sla_resolution_deadline=ticket.sla_resolution_deadline.isoformat() if ticket.sla_resolution_deadline else None,
+        sla_warning_emitted=ticket.sla_warning_emitted,
+        escalated=ticket.escalated,
+        escalation_reason=ticket.escalation_reason,
+    )
+
 
 router = APIRouter(prefix="/api/v2/tickets", tags=["Enterprise Multi-Tenant Triage"])
 
@@ -56,25 +83,7 @@ def create_enterprise_ticket(
             predict_use_case=predict_use_case,
         )
         ticket = use_case.execute(context, dto)
-
-        return EnterpriseTicketResponse(
-            ticket_id=ticket.ticket_id,
-            tenant_id=ticket.tenant_id,
-            title=ticket.title,
-            description=ticket.description,
-            customer_id=ticket.customer_id,
-            customer_tier=ticket.customer_tier.value,
-            status=ticket.status.value,
-            predicted_category=ticket.predicted_category,
-            confidence=ticket.confidence,
-            probabilities=ticket.probabilities,
-            assigned_team=ticket.assigned_team,
-            priority=ticket.priority.value,
-            auto_routed=ticket.auto_routed,
-            model_version=ticket.model_version,
-            latency_ms=ticket.latency_ms,
-            created_at=ticket.created_at.isoformat(),
-        )
+        return map_ticket_to_response(ticket)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -106,27 +115,7 @@ def list_enterprise_tickets(
         offset=offset,
     )
 
-    return [
-        EnterpriseTicketResponse(
-            ticket_id=t.ticket_id,
-            tenant_id=t.tenant_id,
-            title=t.title,
-            description=t.description,
-            customer_id=t.customer_id,
-            customer_tier=t.customer_tier.value,
-            status=t.status.value,
-            predicted_category=t.predicted_category,
-            confidence=t.confidence,
-            probabilities=t.probabilities,
-            assigned_team=t.assigned_team,
-            priority=t.priority.value,
-            auto_routed=t.auto_routed,
-            model_version=t.model_version,
-            latency_ms=t.latency_ms,
-            created_at=t.created_at.isoformat(),
-        )
-        for t in tickets
-    ]
+    return [map_ticket_to_response(t) for t in tickets]
 
 
 @router.get(
@@ -153,21 +142,4 @@ def get_enterprise_ticket(
             detail=f"Ticket '{ticket_id}' not found in current tenant.",
         )
 
-    return EnterpriseTicketResponse(
-        ticket_id=ticket.ticket_id,
-        tenant_id=ticket.tenant_id,
-        title=ticket.title,
-        description=ticket.description,
-        customer_id=ticket.customer_id,
-        customer_tier=ticket.customer_tier.value,
-        status=ticket.status.value,
-        predicted_category=ticket.predicted_category,
-        confidence=ticket.confidence,
-        probabilities=ticket.probabilities,
-        assigned_team=ticket.assigned_team,
-        priority=ticket.priority.value,
-        auto_routed=ticket.auto_routed,
-        model_version=ticket.model_version,
-        latency_ms=ticket.latency_ms,
-        created_at=ticket.created_at.isoformat(),
-    )
+    return map_ticket_to_response(ticket)

@@ -81,3 +81,18 @@ class IEnterpriseTicketRepository(ABC):
     ) -> List[EnterpriseTicket]:
         """Lists tickets strictly scoped to the specified tenant."""
         pass
+
+    @abstractmethod
+    def update_ticket_sla(self, ticket: EnterpriseTicket) -> EnterpriseTicket:
+        """Updates SLA status, warning flags, and escalation fields on a ticket."""
+        pass
+
+    @abstractmethod
+    def get_open_tickets(self, tenant_id: Optional[str] = None) -> List[EnterpriseTicket]:
+        """Retrieves all open tickets across tenants or for a specific tenant."""
+        pass
+
+    @abstractmethod
+    def list_at_risk_tickets(self, tenant_id: str) -> List[EnterpriseTicket]:
+        """Retrieves tickets past warning threshold or breached within tenant boundary."""
+        pass

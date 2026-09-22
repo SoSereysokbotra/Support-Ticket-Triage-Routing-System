@@ -6,8 +6,10 @@ Verifies tenant onboarding, JWT authentication, and strict cross-tenant data iso
 import pytest
 from starlette.testclient import TestClient
 
+from src.domain.entities.category import TicketCategory
 from src.infrastructure.database.enterprise_repository import EnterpriseRepository
 from src.presentation.api.app import create_app
+from tests.conftest import MockTicketClassifier
 
 
 @pytest.fixture(scope="module")
@@ -16,7 +18,12 @@ def client(tmp_path_factory):
     test_db_url = f"sqlite:///{tmp_dir}/test_multi_tenant.db"
     repo = EnterpriseRepository(db_url=test_db_url)
 
-    app = create_app()
+    mock_clf = MockTicketClassifier(
+        predicted_category=TicketCategory.NETWORK,
+        confidence=0.95,
+        model_version="mock-tenant-v1",
+    )
+    app = create_app(model_override=mock_clf)
     app.state.enterprise_repository = repo
 
     with TestClient(app) as test_client:
