@@ -71,6 +71,9 @@ services:
 
   # 2. Streamlit MLOps Monitoring Dashboard
   dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: ticket-triage:latest
     container_name: ticket-triage-dashboard
     command: ["streamlit", "run", "src/presentation/dashboard/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
@@ -100,6 +103,9 @@ services:
 
   # 3. MLflow Tracking & Model Registry Server
   mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: ticket-triage:latest
     container_name: ticket-triage-mlflow
     command: [
@@ -108,7 +114,9 @@ services:
       "--default-artifact-root", "/app/mlruns",
       "--host", "0.0.0.0",
       "--port", "5000",
-      "--workers", "2"
+      "--workers", "2",
+      "--allowed-hosts", "*",
+      "--cors-allowed-origins", "*"
     ]
     environment:
       - MLFLOW_SERVER_ENABLE_JOB_EXECUTION=false
