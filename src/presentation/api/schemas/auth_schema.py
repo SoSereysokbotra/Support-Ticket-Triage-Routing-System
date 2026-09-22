@@ -2,7 +2,7 @@
 Pydantic Schemas for Multi-Tenant Auth, User Management, and Enterprise Tickets.
 """
 
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -70,3 +70,7 @@ class EnterpriseTicketResponse(BaseModel):
     sla_warning_emitted: Optional[bool] = False
     escalated: Optional[bool] = False
     escalation_reason: Optional[str] = None
+    resolved_at: Optional[str] = None
+    copilot_suggested_response: Optional[str] = None
+    copilot_confidence: Optional[float] = None
+    copilot_sources: Optional[List[str]] = None

@@ -43,6 +43,10 @@ def map_ticket_to_response(ticket: EnterpriseTicket) -> EnterpriseTicketResponse
         sla_warning_emitted=ticket.sla_warning_emitted,
         escalated=ticket.escalated,
         escalation_reason=ticket.escalation_reason,
+        resolved_at=ticket.resolved_at.isoformat() if ticket.resolved_at else None,
+        copilot_suggested_response=ticket.copilot_suggested_response,
+        copilot_confidence=ticket.copilot_confidence,
+        copilot_sources=ticket.copilot_sources,
     )
 
 

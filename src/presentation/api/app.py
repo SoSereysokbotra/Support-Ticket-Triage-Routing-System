@@ -26,6 +26,7 @@ from src.infrastructure.registry.mlflow_registry import MLflowModelRegistry
 from src.infrastructure.websocket.connection_manager import WebSocketConnectionManager
 from src.infrastructure.workers.sla_watchdog_worker import SLAWatchdogWorker
 from src.presentation.api.routes.auth_v2 import router as auth_v2_router
+from src.presentation.api.routes.copilot_v2 import router as copilot_v2_router
 from src.presentation.api.routes.health import router as health_router
 from src.presentation.api.routes.monitoring import router as monitoring_router
 from src.presentation.api.routes.predict import router as predict_router
@@ -202,6 +203,7 @@ def create_app(model_override=None, registry_override=None, logger_override=None
     app.include_router(tickets_v2_router)
     app.include_router(sla_v2_router)
     app.include_router(websocket_v2_router)
+    app.include_router(copilot_v2_router)
 
     return app
 

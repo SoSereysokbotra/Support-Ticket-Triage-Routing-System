@@ -17,6 +17,8 @@ class EnterpriseEventType(str, Enum):
     SLA_WARNING = "ticket.sla_warning"
     TICKET_ESCALATED = "ticket.escalated"
     TICKET_RESOLVED = "ticket.resolved"
+    FEEDBACK_SUBMITTED = "agent.feedback.submitted"
+    RETRAINING_TRIGGERED = "model.retraining.triggered"
 
 
 @dataclass(frozen=True)

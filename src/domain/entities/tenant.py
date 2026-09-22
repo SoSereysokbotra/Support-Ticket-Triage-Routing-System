@@ -9,7 +9,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 
 class UserRole(str, Enum):
@@ -134,7 +134,15 @@ class EnterpriseTicket:
     escalated: bool = False
     escalation_reason: Optional[str] = None
     resolved_at: Optional[datetime] = None
+    copilot_suggested_response: Optional[str] = None
+    copilot_confidence: Optional[float] = None
+    copilot_sources: Optional[List[str]] = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+    def resolve(self, now: Optional[datetime] = None) -> None:
+        """Transitions ticket to RESOLVED state."""
+        self.status = TicketStatus.RESOLVED
+        self.resolved_at = now or datetime.now(timezone.utc)
 
     def __post_init__(self) -> None:
         if not self.description or not self.description.strip():
