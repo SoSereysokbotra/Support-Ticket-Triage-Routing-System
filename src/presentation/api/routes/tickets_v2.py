@@ -78,9 +78,11 @@ def create_enterprise_ticket(
             customer_tier=tier_enum,
             priority_hint=payload.priority_hint,
         )
+        event_bus = getattr(request.app.state, "event_bus", None)
         use_case = CreateEnterpriseTicketUseCase(
             repository=repo,
             predict_use_case=predict_use_case,
+            event_bus=event_bus,
         )
         ticket = use_case.execute(context, dto)
         return map_ticket_to_response(ticket)

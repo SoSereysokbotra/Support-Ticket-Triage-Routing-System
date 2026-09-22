@@ -12,7 +12,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
+from src.domain.entities.event import EnterpriseEvent, EnterpriseEventType
 from src.domain.entities.tenant import TicketStatus
+from src.domain.interfaces.event_bus_interface import IEventBus
 from src.infrastructure.database.enterprise_repository import EnterpriseRepository
 
 logger = logging.getLogger("sla_watchdog")
@@ -38,10 +40,12 @@ class SLAWatchdogWorker:
         repository: EnterpriseRepository,
         poll_interval_seconds: int = 30,
         warning_threshold_pct: float = 0.75,
+        event_bus: Optional[IEventBus] = None,
     ) -> None:
         self.repository = repository
         self.poll_interval_seconds = poll_interval_seconds
         self.warning_threshold_pct = warning_threshold_pct
+        self.event_bus = event_bus
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
 
@@ -72,6 +76,19 @@ class SLAWatchdogWorker:
                         f"[SLA Breach] Ticket {ticket.ticket_id} (Tenant: {ticket.tenant_id}) "
                         f"breached resolution deadline {ticket.sla_resolution_deadline}. Escalated to Tier 3."
                     )
+                    if self.event_bus:
+                        event = EnterpriseEvent(
+                            event_type=EnterpriseEventType.TICKET_ESCALATED,
+                            tenant_id=ticket.tenant_id,
+                            ticket_id=ticket.ticket_id,
+                            payload={
+                                "escalation_reason": ticket.escalation_reason,
+                                "assigned_team": ticket.assigned_team,
+                                "priority": ticket.priority.value,
+                                "status": ticket.status.value,
+                            },
+                        )
+                        self.event_bus.publish(event)
 
             # 2. Check for 75% SLA Warning Threshold
             elif ticket.is_past_warning_threshold(current_time, threshold_pct=self.warning_threshold_pct):
@@ -83,6 +100,22 @@ class SLAWatchdogWorker:
                         f"[SLA Warning] Ticket {ticket.ticket_id} (Tenant: {ticket.tenant_id}) "
                         f"crossed {int(self.warning_threshold_pct * 100)}% SLA threshold."
                     )
+                    if self.event_bus:
+                        event = EnterpriseEvent(
+                            event_type=EnterpriseEventType.SLA_WARNING,
+                            tenant_id=ticket.tenant_id,
+                            ticket_id=ticket.ticket_id,
+                            payload={
+                                "warning_threshold_pct": self.warning_threshold_pct,
+                                "sla_resolution_deadline": (
+                                    ticket.sla_resolution_deadline.isoformat()
+                                    if ticket.sla_resolution_deadline
+                                    else None
+                                ),
+                                "priority": ticket.priority.value,
+                            },
+                        )
+                        self.event_bus.publish(event)
 
         return SLAScanReport(
             scanned_count=scanned,

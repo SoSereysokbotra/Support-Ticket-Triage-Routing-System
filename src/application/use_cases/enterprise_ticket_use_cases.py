@@ -12,6 +12,7 @@ from typing import List, Optional
 
 from src.application.dto.ticket_dto import TicketInputDTO
 from src.application.use_cases.predict_ticket import PredictTicketUseCase
+from src.domain.entities.event import EnterpriseEvent, EnterpriseEventType
 from src.domain.entities.tenant import (
     CustomerTier,
     EnterpriseTicket,
@@ -19,6 +20,7 @@ from src.domain.entities.tenant import (
     TicketPriority,
     TicketStatus,
 )
+from src.domain.interfaces.event_bus_interface import IEventBus
 from src.domain.services.sla_policy_engine import SLAPolicyEngine
 from src.infrastructure.database.enterprise_repository import EnterpriseRepository
 
@@ -39,9 +41,11 @@ class CreateEnterpriseTicketUseCase:
         self,
         repository: EnterpriseRepository,
         predict_use_case: PredictTicketUseCase,
+        event_bus: Optional[IEventBus] = None,
     ) -> None:
         self.repository = repository
         self.predict_use_case = predict_use_case
+        self.event_bus = event_bus
 
     def execute(
         self,
@@ -98,7 +102,36 @@ class CreateEnterpriseTicketUseCase:
             created_at=now,
         )
 
-        return self.repository.save(enterprise_ticket)
+        saved_ticket = self.repository.save(enterprise_ticket)
+        if self.event_bus:
+            event = EnterpriseEvent(
+                event_type=EnterpriseEventType.TICKET_INGESTED,
+                tenant_id=saved_ticket.tenant_id,
+                ticket_id=saved_ticket.ticket_id,
+                payload={
+                    "title": saved_ticket.title,
+                    "description": saved_ticket.description,
+                    "predicted_category": saved_ticket.predicted_category,
+                    "confidence": saved_ticket.confidence,
+                    "assigned_team": saved_ticket.assigned_team,
+                    "priority": saved_ticket.priority.value,
+                    "customer_tier": saved_ticket.customer_tier.value,
+                    "sla_response_deadline": (
+                        saved_ticket.sla_response_deadline.isoformat()
+                        if saved_ticket.sla_response_deadline
+                        else None
+                    ),
+                    "sla_resolution_deadline": (
+                        saved_ticket.sla_resolution_deadline.isoformat()
+                        if saved_ticket.sla_resolution_deadline
+                        else None
+                    ),
+                    "created_at": saved_ticket.created_at.isoformat(),
+                },
+            )
+            self.event_bus.publish(event)
+
+        return saved_ticket
 
 
 class ListEnterpriseTicketsUseCase:

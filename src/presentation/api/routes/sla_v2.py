@@ -98,7 +98,8 @@ def escalate_ticket(
         )
 
     try:
-        use_case = EscalateTicketUseCase(repo)
+        event_bus = getattr(request.app.state, "event_bus", None)
+        use_case = EscalateTicketUseCase(repo, event_bus=event_bus)
         dto = EscalateTicketInputDTO(
             ticket_id=ticket_id,
             reason=payload.reason,

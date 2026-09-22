@@ -8,7 +8,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional
 
+from src.domain.entities.event import EnterpriseEvent, EnterpriseEventType
 from src.domain.entities.tenant import EnterpriseTicket, TenantContext
+from src.domain.interfaces.event_bus_interface import IEventBus
 from src.infrastructure.database.enterprise_repository import EnterpriseRepository
 from src.infrastructure.workers.sla_watchdog_worker import SLAScanReport, SLAWatchdogWorker
 
@@ -33,8 +35,13 @@ class EvaluateSLAUseCase:
 class EscalateTicketUseCase:
     """Escalates a specific ticket within the caller's tenant boundary."""
 
-    def __init__(self, repository: EnterpriseRepository) -> None:
+    def __init__(
+        self,
+        repository: EnterpriseRepository,
+        event_bus: Optional[IEventBus] = None,
+    ) -> None:
         self.repository = repository
+        self.event_bus = event_bus
 
     def execute(
         self,
@@ -49,7 +56,23 @@ class EscalateTicketUseCase:
             raise ValueError(f"Ticket '{dto.ticket_id}' not found in current tenant.")
 
         ticket.escalate(reason=dto.reason, new_team=dto.new_team)
-        return self.repository.update_ticket_sla(ticket)
+        updated = self.repository.update_ticket_sla(ticket)
+
+        if self.event_bus:
+            event = EnterpriseEvent(
+                event_type=EnterpriseEventType.TICKET_ESCALATED,
+                tenant_id=updated.tenant_id,
+                ticket_id=updated.ticket_id,
+                payload={
+                    "escalation_reason": updated.escalation_reason,
+                    "assigned_team": updated.assigned_team,
+                    "priority": updated.priority.value,
+                    "status": updated.status.value,
+                },
+            )
+            self.event_bus.publish(event)
+
+        return updated
 
 
 class ListAtRiskTicketsUseCase:

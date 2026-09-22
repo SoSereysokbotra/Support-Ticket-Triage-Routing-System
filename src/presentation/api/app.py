@@ -10,6 +10,7 @@ from src.application.use_cases.predict_ticket import PredictTicketUseCase
 from src.application.use_cases.route_ticket import RouteTicketUseCase
 from src.infrastructure.data.dataset_loader import DatasetLoader
 from src.infrastructure.database.enterprise_repository import EnterpriseRepository
+from src.infrastructure.events.event_bus import create_event_bus
 from src.infrastructure.features.feast_store import FeastFeatureStoreAdapter
 from src.infrastructure.models.baseline_classifier import BaselineTfidfClassifier
 from src.infrastructure.models.distilbert_classifier import DistilBertTicketClassifier
@@ -22,6 +23,7 @@ from src.infrastructure.monitoring.metrics import (
 )
 from src.infrastructure.monitoring.prediction_logger import PredictionLogger
 from src.infrastructure.registry.mlflow_registry import MLflowModelRegistry
+from src.infrastructure.websocket.connection_manager import WebSocketConnectionManager
 from src.infrastructure.workers.sla_watchdog_worker import SLAWatchdogWorker
 from src.presentation.api.routes.auth_v2 import router as auth_v2_router
 from src.presentation.api.routes.health import router as health_router
@@ -30,6 +32,7 @@ from src.presentation.api.routes.predict import router as predict_router
 from src.presentation.api.routes.registry import router as registry_router
 from src.presentation.api.routes.sla_v2 import router as sla_v2_router
 from src.presentation.api.routes.tickets_v2 import router as tickets_v2_router
+from src.presentation.api.routes.websocket_v2 import router as websocket_v2_router
 
 
 def create_app(model_override=None, registry_override=None, logger_override=None) -> FastAPI:
@@ -61,9 +64,21 @@ def create_app(model_override=None, registry_override=None, logger_override=None
             postgres_url = os.getenv("POSTGRES_DB_URL") or os.getenv("DATABASE_URL")
             app.state.enterprise_repository = EnterpriseRepository(db_url=postgres_url)
 
+        # Initialize Event Bus & WebSocket Connection Manager
+        if not getattr(app.state, "event_bus", None):
+            app.state.event_bus = create_event_bus()
+
+        if not getattr(app.state, "websocket_manager", None):
+            app.state.websocket_manager = WebSocketConnectionManager(
+                event_bus=app.state.event_bus
+            )
+
         # Initialize SLA Watchdog Worker Daemon
         if not getattr(app.state, "sla_watchdog", None):
-            sla_watchdog = SLAWatchdogWorker(repository=app.state.enterprise_repository)
+            sla_watchdog = SLAWatchdogWorker(
+                repository=app.state.enterprise_repository,
+                event_bus=app.state.event_bus,
+            )
             sla_watchdog.start()
             app.state.sla_watchdog = sla_watchdog
 
@@ -186,6 +201,7 @@ def create_app(model_override=None, registry_override=None, logger_override=None
     app.include_router(auth_v2_router)
     app.include_router(tickets_v2_router)
     app.include_router(sla_v2_router)
+    app.include_router(websocket_v2_router)
 
     return app
 
